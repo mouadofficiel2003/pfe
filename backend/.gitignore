@@ -1,0 +1,5 @@
+**/target/
+auth-service/src/main/resources/application-local.properties
+candidat-service/src/main/resources/application-local.properties
+concours-service/src/main/resources/application-local.properties
+lieux-service/src/main/resources/application-local.properties

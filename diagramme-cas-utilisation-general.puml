@@ -1,0 +1,59 @@
+@startuml
+left to right direction
+skinparam actorStyle awesome
+
+title Diagramme de cas d'utilisation général
+
+actor "Gestionnaire" as G
+actor "Administrateur" as A
+
+rectangle "Système de dématérialisation\nde la gestion des candidatures" {
+
+  usecase "S'authentifier" as UC1
+  usecase "Importer les candidats admis\n(fichier Excel)" as UC2
+  usecase "Gérer les candidats" as UC3
+  usecase "Gérer les concours" as UC4
+  usecase "Gérer centres, établissements et salles" as UC5
+  usecase "Répartition automatique\ndes candidats aux salles" as UC6
+  usecase "Répartition manuelle\ndes candidats aux salles" as UC7
+  usecase "Générer les convocations" as UC8
+  usecase "Envoyer les convocations\npar e-mail" as UC9
+  usecase "Consulter tableau de bord\net statistiques" as UC10
+  usecase "Consulter l'application" as UC11
+  usecase "Gérer les rôles et les gestionnaires" as UC12
+  usecase "Accéder à toute la base de données" as UC13
+  usecase "Suivi et contrôle" as UC14
+}
+
+G --> UC1
+G --> UC2
+G --> UC3
+G --> UC4
+G --> UC5
+G --> UC6
+G --> UC7
+G --> UC8
+G --> UC9
+G --> UC10
+
+A --> UC1
+A --> UC11
+A --> UC12
+A --> UC13
+A --> UC14
+
+note right of UC6
+  La répartition automatique tient compte du
+  numéro de concours, de la ville du concours,
+  de la ville du candidat et de la capacité des salles.
+end note
+
+note bottom of A
+  L'administrateur consulte l'application et la base,
+  assure le suivi et le contrôle, mais n'exécute pas
+  les actions métier du gestionnaire (import, gestion
+  des candidats/concours/lieux, répartitions, convocations),
+  sauf pour la gestion des rôles et des gestionnaires.
+end note
+
+@enduml

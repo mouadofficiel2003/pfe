@@ -1,0 +1,63 @@
+@startuml diagramme-sequence-gestion-centres
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Gestion des centres\n(seul périmètre : centre, concours du centre, établissements rattachés)
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Service Centres\n(Spring Boot)" as Svc
+database "PostgreSQL" as DB
+
+== Consulter les centres ==
+Gestionnaire -> React : Ouvre la page « Centres »
+React -> GW : GET /centres
+GW -> Svc : Demande liste des centres
+Svc -> DB : SELECT centres et liaisons avec concours
+DB --> Svc : Données
+Svc --> React : 200 OK\n( JSON : liste centres, noms, concours associés )
+React --> Gestionnaire : Affiche la liste des centres
+
+== Ajouter un centre ==
+Gestionnaire -> React : Saisit nom du centre,\nconcours qui se déroulent dans ce centre,\npuis valide
+React -> GW : POST /centres\n( corps : nom, liste ids concours )
+GW -> Svc : Création centre + liaisons centre-concours
+Svc -> DB : INSERT centre ; INSERT liaisons concours
+DB --> Svc : Identifiants créés
+Svc --> React : 201 Created\n( centre créé )
+React --> Gestionnaire : Centre ajouté à la liste
+
+== Modifier les informations du centre ==
+Gestionnaire -> React : Change le nom du centre\net/ou les concours associés au centre
+React -> GW : PATCH /centres/idCentre\n( corps : nom, liste ids concours )
+GW -> Svc : Mise à jour centre et liaisons
+Svc -> DB : UPDATE centre ; MAJ liaisons concours
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Modifier les établissements du centre ==
+Gestionnaire -> React : Ajoute, retire ou réordonne\nles établissements rattachés à ce centre
+React -> GW : PUT /centres/idCentre/etablissements\n( corps : liste ids établissements ou rattachements )
+GW -> Svc : Mise à jour rattachements centre-établissements
+Svc -> DB : UPDATE établissement.centre_id ou table liaison
+DB --> Svc : OK
+Svc --> React : 200 OK\n( centre avec ses établissements )
+React --> Gestionnaire : Liste des établissements du centre à jour
+
+== Supprimer un centre ==
+Gestionnaire -> React : Confirme la suppression du centre
+React -> GW : DELETE /centres/idCentre
+GW -> Svc : Vérification dépendances\n( établissements, répartition, … )
+Svc -> DB : DELETE ou désactivation / erreur contrainte
+DB --> Svc : OK ou échec métier
+Svc --> React : 204 No Content ou 409 Conflict
+React --> Gestionnaire : Centre supprimé ou message d'erreur
+
+note right of Svc
+  Un centre porte : nom, concours organisés dans ce centre,\nétablissements qui en dépendent.
+end note
+
+@enduml

@@ -1,0 +1,28 @@
+# Build outputs
+**/target/
+frontend/node_modules/
+frontend/dist/
+frontend/dist-ssr/
+
+# Environment & local overrides
+.env
+.env.local
+.env.*.local
+!**/.env.example
+**/application-local.properties
+
+# Logs
+*.log
+logs/
+
+# IDE & OS
+.idea/
+.vscode/
+!.vscode/extensions.json
+.DS_Store
+Thumbs.db
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?

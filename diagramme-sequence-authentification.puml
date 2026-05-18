@@ -1,0 +1,45 @@
+@startuml diagramme-sequence-authentification
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Séquence d'authentification (Gestionnaire)
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Service Authentification\n(Spring Boot)" as Auth
+database "PostgreSQL" as DB
+
+Gestionnaire -> React : Accède à la page de connexion
+Gestionnaire -> React : Saisit nom d'utilisateur et mot de passe
+
+React -> React : Validation minimale côté client
+
+alt Avec passerelle API
+  React -> GW : POST /auth/login\n{ username, password }
+  GW -> Auth : Transmet la requête
+else Sans passerelle
+  React -> Auth : POST /auth/login\n{ username, password }
+end
+
+Auth -> Auth : Préparer la vérification
+
+Auth -> DB : Rechercher utilisateur\n(comparaison mot de passe haché)
+DB --> Auth : Utilisateur et statut\nou aucun résultat
+
+alt Échec (identifiants invalides\nou compte désactivé)
+  Auth --> React : 401 Unauthorized
+  React --> Gestionnaire : Message d'erreur
+else Succès
+  Auth -> Auth : Générer JWT\n(access / refresh si prévu)
+  Auth --> React : 200 OK\n{ token(s), infos utilisateur }
+  React -> React : Stocker le jeton\n(selon stratégie choisie)
+  React --> Gestionnaire : Accès à l'espace gestionnaire
+end
+
+note right of Auth
+  Les requêtes suivantes portent le JWT\n(ex. Authorization: Bearer ...)
+end note
+
+@enduml

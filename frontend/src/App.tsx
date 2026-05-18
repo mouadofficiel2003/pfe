@@ -1,0 +1,46 @@
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
+import { RequireAuth } from "./auth/RequireAuth";
+import CandidatsPage from "./pages/CandidatsPage";
+import ConcoursPage from "./pages/ConcoursPage";
+import LieuxPage from "./pages/LieuxPage";
+import LoginPage from "./pages/LoginPage";
+import RootRedirect from "./pages/RootRedirect";
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <AuthProvider>
+        <Routes>
+          <Route path="/" element={<RootRedirect />} />
+          <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/candidats"
+            element={
+              <RequireAuth>
+                <CandidatsPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/concours"
+            element={
+              <RequireAuth>
+                <ConcoursPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/lieux"
+            element={
+              <RequireAuth>
+                <LieuxPage />
+              </RequireAuth>
+            }
+          />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}

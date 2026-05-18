@@ -1,0 +1,55 @@
+@startuml diagramme-sequence-gestion-concours
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Séquence : gestion des concours\n(ajouter, modifier, supprimer un concours)
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Service Concours\n(Spring Boot)" as Svc
+database "PostgreSQL" as DB
+
+== Consulter la liste des concours (page « Concours ») ==
+Gestionnaire -> React : Ouvre la page de gestion des concours
+React -> GW : GET /concours
+GW -> Svc : Liste des concours
+Svc -> DB : SELECT concours
+DB --> Svc : Jeu de lignes
+Svc --> React : 200 OK\n{ concours : nom, n°, date, ... }
+React --> Gestionnaire : Affiche la liste des concours
+
+== Ajouter un concours ==
+Gestionnaire -> React : Saisit les informations\n(nom du concours, numéro du concours, date du concours)\npuis valide
+React -> GW : POST /concours\n{ nom, numeroConcours, dateConcours }
+GW -> Svc : Création concours
+Svc -> Svc : Validation métier (unicité n°, dates, etc.)
+Svc -> DB : INSERT concours
+DB --> Svc : Identifiant créé
+Svc --> React : 201 Created\n{ concours créé }
+React --> Gestionnaire : Liste ou message de succès\nmis à jour
+
+== Modifier un concours ==
+Gestionnaire -> React : Sélectionne un concours puis « Modifier »\nédite les champs et valide
+React -> GW : PUT ou PATCH /concours/{id}\n{ nom, numeroConcours, dateConcours }
+GW -> Svc : Mise à jour
+Svc -> DB : UPDATE concours WHERE id
+DB --> Svc : OK
+Svc --> React : 200 OK\n{ concours à jour }
+React --> Gestionnaire : Affichage mis à jour
+
+== Supprimer un concours ==
+Gestionnaire -> React : Choisit « Supprimer » et confirme
+React -> GW : DELETE /concours/{id}
+GW -> Svc : Suppression
+Svc -> DB : DELETE (ou suppression logique)\n(contraintes : candidats liés, etc.)
+DB --> Svc : OK
+Svc --> React : 204 No Content ou 200 OK
+React --> Gestionnaire : Concours retiré de la liste
+
+note right of Svc
+  Selon l'architecture, le service peut être\nun microservice dédié « concours » ou\nun module d'un service « référentiel ».
+end note
+
+@enduml

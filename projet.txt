@@ -1,0 +1,55 @@
+sujet du stage PFE(projet fin d'année) ingénierie informatique et réseaux : Dématérialisation de la gestion des candidatures.
+
+Backend: Microservices Spring Boot
+Frontend:React
+Base de donnees: PotgreSQL 
+
+les responsables: 
+-Administrateur: .gere les comptes des gestionnaires
+                 .peut consulter l'application mais peut pas faire une action
+
+-Gestionnaire:   .gere les candidatures
+                 .gestion des centres de concours et etablissement et salles
+                 .clique sur le bouton repartition automatique puis le  système repartit les candidats sur les salles
+                 .faire la repartition manuelle
+                 .peut consulter le tableau de bord
+                 .clique sur generer les convocations, puis le syssteme genere toute les convocations des candidats
+                 .clique sur envoyer convocations , puis le système envoie tout les convocations aux candidats via gmail
+                 .en resume , le gestionnaire est le responsable de la gestion des candidats et de toute l'application web
+
+
+comment l'application devrait etre:
+
+-le gestionnaire s'authentifie
+
+-il voie la partie candidat, il voie une bouton importer fichier, il import le fichier des candidat admis, puis tout les candidats s'affichent dans l'application dans la partie candidat, il peut modifier ou supprimer un candidat , et aussi repartit manuellement un candidat dans une salle 
+
+-dans la partie concours: le gestionnaire peut creer ou modifier ou supprimer un concours
+
+-dans la partie centre et etablissmeent et salles , il peut gerer (créer , modifier,supprimer)
+puis la partie repartiton ,le gestionnaire clique sur le bouton repartition automatique , puis le système repartit les candiats sur les salles(voir diagramme sequence repartition)
+
+-puis on an la partie tableau de bord, exemple:remplissage de salles, nombre de candidat dans un centre …
+
+-puis on a la partie convocations, le gestionnaire clique sur generer toutes les convocations , puis le système genere toutes le convocations qui seront pretes a etre envoyes aux candidats, puis une liste de test et de gestion s'affichent dans l'application , une liste de 5 convocations aleatoire, pour la gestion et le test 
+
+-puis le gestionnaire clique sur envoyer toutes les convocations , puis le syteme envoit toutes les convocations aux candidats
+
+
+
+.les attributs du candidats:numero inscription, nom, prenom, CIN,numero telephone, ville, age, email, specialite, nom concours, numero concours
+.les attributs d'un centre(centre c'est la ville,exemple:centre rabat, centre Casablanca):numero centre, nom centre, les etablissement , les concours qui va se passer dans ce centre
+.les attribus d'un etablissement:numero etablissement, nom etablissement, les salles de l'etablissement, concours qui vont se passer dans cette etablissement
+.les attributs d"une salle:numero salle, nombre de place, le concours qui va se passer dans cette salle(un seul concours), 
+.les attributs d'une convocation:numero convocation, nom candidat, prenom candidat,numero d'inscription, le nom du concours,numero concours, la date et heure de l'examen du concours, le centre, l'etablissement, et la salle ou le candidat va passer le concours, et le numero de la place dans la salle
+.les attributs d'un concours:numero concours, nom concours,centres ou le concours aura lieu,date et heure de l’examen
+
+
+
+Une découpe en 6 (recommandée si tu veux coller au cahier des charges)
+auth-utilisateurs — connexion, rôles (admin lecture seule vs gestionnaire), gestion des comptes gestionnaires par l’admin.
+concours — CRUD concours, date/heure globale, centres où le concours a lieu.
+lieux — centres, établissements, salles, capacités, concours par salle.
+candidats — CRUD, import Excel, lecture pour répartition / convocations.
+répartition — répartition auto (logique du diagramme) + API pour affectation manuelle.
+convocations — génération (PDF ou équivalent), liste + 5 aléatoires, orchestration envoi ; intégration Gmail (OAuth) peut vivre ici ou dans un petit 7e service « notification » si tu veux isoler le mail — souvent fusionné avec convocations pour rester à 6.

@@ -1,0 +1,54 @@
+@startuml diagramme-sequence-gestion-salles
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Gestion des salles\n(seul périmètre : salle, concours, capacité)
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Service Salles\n(Spring Boot)" as Svc
+database "PostgreSQL" as DB
+
+== Consulter les salles ==
+Gestionnaire -> React : Sélectionne un établissement\npour afficher ses salles
+React -> GW : GET /salles\n( query : etablissementId )
+GW -> Svc : Liste des salles filtrée
+Svc -> DB : SELECT salles
+DB --> Svc : Données
+Svc --> React : 200 OK\n( nom salle, concours, capacité )
+React --> Gestionnaire : Affiche les salles
+
+== Ajouter une salle ==
+Gestionnaire -> React : Saisit nom de la salle,\nconcours qui s'y déroule,\ncapacité, rattachement à l'établissement
+React -> GW : POST /salles\n( corps : nom, idConcours, capacite, etablissementId )
+GW -> Svc : Création salle
+Svc -> DB : INSERT salle
+DB --> Svc : Identifiant créé
+Svc --> React : 201 Created
+React --> Gestionnaire : Salle ajoutée à la liste
+
+== Modifier une salle ==
+Gestionnaire -> React : Modifie nom, concours et/ou capacité
+React -> GW : PATCH /salles/idSalle\n( corps : nom, idConcours, capacite )
+GW -> Svc : Mise à jour
+Svc -> DB : UPDATE salle
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Supprimer une salle ==
+Gestionnaire -> React : Confirme la suppression de la salle
+React -> GW : DELETE /salles/idSalle
+GW -> Svc : Vérification répartition candidats…
+Svc -> DB : DELETE ou désactivation
+DB --> Svc : OK ou contrainte
+Svc --> React : 204 ou 409
+React --> Gestionnaire : Salle retirée ou erreur
+
+note right of Svc
+  Une salle porte : nom, concours organisé dans cette salle,\ncapacité (nombre de places).
+end note
+
+@enduml

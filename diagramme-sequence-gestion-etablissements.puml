@@ -1,0 +1,63 @@
+@startuml diagramme-sequence-gestion-etablissements
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Gestion des établissements\n(seul périmètre : établissement, concours, salles rattachées)
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Service Établissements\n(Spring Boot)" as Svc
+database "PostgreSQL" as DB
+
+== Consulter les établissements ==
+Gestionnaire -> React : Sélectionne un centre ou filtre\npour voir les établissements
+React -> GW : GET /etablissements\n( query : centreId optionnel )
+GW -> Svc : Liste des établissements
+Svc -> DB : SELECT établissements et liaisons concours
+DB --> Svc : Données
+Svc --> React : 200 OK\n( liste : nom, concours, aperçu salles )
+React --> Gestionnaire : Affiche les établissements
+
+== Ajouter un établissement ==
+Gestionnaire -> React : Saisit nom de l'établissement,\nconcours dans cet établissement,\nrattachement au centre parent
+React -> GW : POST /etablissements\n( corps : nom, centreId, liste ids concours )
+GW -> Svc : Création + liaisons établissement-concours
+Svc -> DB : INSERT établissement ; INSERT liaisons concours
+DB --> Svc : Identifiants créés
+Svc --> React : 201 Created
+React --> Gestionnaire : Établissement ajouté
+
+== Modifier les informations de l'établissement ==
+Gestionnaire -> React : Modifie le nom et/ou les concours\nliés à cet établissement
+React -> GW : PATCH /etablissements/idEtab\n( corps : nom, liste ids concours )
+GW -> Svc : Mise à jour infos et liaisons
+Svc -> DB : UPDATE établissement ; MAJ liaisons concours
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Modifier les salles de l'établissement ==
+Gestionnaire -> React : Gère les salles rattachées :\naffectation, retrait, réorganisation
+React -> GW : PUT /etablissements/idEtab/salles\n( corps : liste ids salles ou rattachements )
+GW -> Svc : Mise à jour rattachements établissement-salles
+Svc -> DB : UPDATE salle.etablissement_id ou liaison
+DB --> Svc : OK
+Svc --> React : 200 OK\n( établissement avec ses salles )
+React --> Gestionnaire : Liste des salles à jour
+
+== Supprimer un établissement ==
+Gestionnaire -> React : Confirme la suppression
+React -> GW : DELETE /etablissements/idEtab
+GW -> Svc : Contrôle salles, répartition candidats…
+Svc -> DB : DELETE ou cascade contrôlée
+DB --> Svc : OK ou contrainte
+Svc --> React : 204 ou 409
+React --> Gestionnaire : Établissement retiré ou erreur
+
+note right of Svc
+  Un établissement porte : nom, concours qui y sont passés,\nliste des salles qui lui sont rattachées.
+end note
+
+@enduml

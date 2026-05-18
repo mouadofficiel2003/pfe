@@ -1,0 +1,145 @@
+@startuml diagramme-sequence-centres-etablissements-salles
+!theme plain
+skinparam sequenceMessageAlign center
+skinparam responseMessageBelowArrow true
+
+title Dématérialisation des candidatures — Séquence :\ngestion des centres de concours, établissements et salles
+
+actor "Gestionnaire" as Gestionnaire
+participant "Application Web\n(React)" as React
+participant "Passerelle API\n(optionnel)" as GW
+participant "Services Organisation\n(Centre / Établissement / Salle)\n(Spring Boot)" as Svc
+database "PostgreSQL" as DB
+
+== Centres — Consultation ==
+Gestionnaire -> React : Ouvre la page « Centres »
+React -> GW : GET /centres\n(évent. pagination / filtres)
+GW -> Svc : Liste des centres
+Svc -> DB : SELECT centres (+ liaisons concours)
+DB --> Svc : Données
+Svc --> React : 200 OK\n( corps JSON : centres, nom, concours associés )
+React --> Gestionnaire : Affiche les centres
+
+== Centres — Ajouter ==
+Gestionnaire -> React : Remplit le formulaire « Nouveau centre »\n(nom, concours concernés dans ce centre)\npuis valide
+React -> GW : POST /centres\n( corps JSON : nom, liste idsConcours )
+GW -> Svc : Création centre + liaisons centre–concours
+Svc -> DB : INSERT centre;\nINSERT liaison_centre_concours …
+DB --> Svc : Identifiants créés
+Svc --> React : 201 Created\n( représentation du centre )
+React --> Gestionnaire : Centre ajouté à la liste
+
+== Centres — Modifier les informations du centre ==
+Gestionnaire -> React : Modifie le nom et/ou les concours du centre\npuis valide
+React -> GW : PATCH /centres/idCentre\n( corps JSON : nom, liste idsConcours )
+GW -> Svc : Mise à jour centre et liaisons concours
+Svc -> DB : UPDATE centre;\nDELETE/INSERT liaisons concours
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Centres — Modifier les établissements rattachés au centre ==
+Gestionnaire -> React : Ajoute, retire ou réordonne des établissements\npour ce centre puis valide
+React -> GW : PUT /centres/idCentre/etablissements\n( liste ids établissements ou créations enfant )
+GW -> Svc : Affectation / mise à jour rattachements\n(centre ↔ établissements)
+Svc -> DB : UPDATE établissement SET centre_id …\nou tables de liaison
+DB --> Svc : OK
+Svc --> React : 200 OK\n( centre avec établissements )
+React --> Gestionnaire : Liste des établissements du centre à jour
+
+== Centres — Supprimer ==
+Gestionnaire -> React : Confirme la suppression du centre
+React -> GW : DELETE /centres/idCentre
+GW -> Svc : Suppression (contrôle dépendances :\nétablissements, salles, répartition…)
+Svc -> DB : DELETE ou désactivation en cascade / contrainte
+DB --> Svc : OK ou erreur métier
+Svc --> React : 204 No Content ou 409 Conflict
+React --> Gestionnaire : Centre retiré ou message d'erreur
+
+== Établissements — Consultation ==
+Gestionnaire -> React : Consulte les établissements\n(d'un centre sélectionné)
+React -> GW : GET /etablissements?centreId=…
+GW -> Svc : Liste filtrée
+Svc -> DB : SELECT établissements (+ concours liés)
+DB --> Svc : Données
+Svc --> React : 200 OK\n( nom établissement, concours, salles résumées )
+React --> Gestionnaire : Affiche les établissements
+
+== Établissements — Ajouter ==
+Gestionnaire -> React : Formulaire nouvel établissement\n(nom, concours dans cet établissement, rattachement au centre)
+React -> GW : POST /etablissements\n( corps JSON : nom, centreId, idsConcours )
+GW -> Svc : Création + liaisons établissement–concours
+Svc -> DB : INSERT établissement;\nINSERT liaison_etablissement_concours …
+DB --> Svc : Identifiants créés
+Svc --> React : 201 Created
+React --> Gestionnaire : Établissement ajouté
+
+== Établissements — Modifier les informations ==
+Gestionnaire -> React : Modifie nom et/ou concours de l'établissement
+React -> GW : PATCH /etablissements/idEtab\n( corps JSON : nom, idsConcours )
+GW -> Svc : Mise à jour + liaisons
+Svc -> DB : UPDATE …;\nmaj liaisons concours
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Établissements — Modifier les salles de l'établissement ==
+Gestionnaire -> React : Gère les salles liées à cet établissement\n(affectation, retrait, capacités si édition inline)
+React -> GW : PUT /etablissements/idEtab/salles\n( liste ids salles )
+GW -> Svc : Rattachement salles ↔ établissement\nou créations avec etablissement_id
+Svc -> DB : UPDATE salle SET établissement_id …
+DB --> Svc : OK
+Svc --> React : 200 OK\n( établissement avec salles )
+React --> Gestionnaire : Liste des salles de l'établissement à jour
+
+== Établissements — Supprimer ==
+Gestionnaire -> React : Confirme suppression établissement
+React -> GW : DELETE /etablissements/idEtab
+GW -> Svc : Suppression (contrôle salles, répartition…)
+Svc -> DB : DELETE / cascade contrôlée
+DB --> Svc : OK
+Svc --> React : 204 ou 409
+React --> Gestionnaire : Établissement retiré ou erreur
+
+== Salles — Consultation ==
+Gestionnaire -> React : Consulte les salles\n(d'un établissement)
+React -> GW : GET /salles?etablissementId=…
+GW -> Svc : Liste filtrée
+Svc -> DB : SELECT salles
+DB --> Svc : Données
+Svc --> React : 200 OK\n( nom salle, concours, capacité )
+React --> Gestionnaire : Affiche les salles
+
+== Salles — Ajouter ==
+Gestionnaire -> React : Nouvelle salle :\nnom, concours qui s'y déroule, capacité,\nrattachement à l'établissement
+React -> GW : POST /salles\n( corps JSON : nom, idConcours, capacite, etablissementId )
+GW -> Svc : Création salle + liaisons si besoin
+Svc -> DB : INSERT salle
+DB --> Svc : Identifiant créé
+Svc --> React : 201 Created
+React --> Gestionnaire : Salle ajoutée
+
+== Salles — Modifier (informations et capacité) ==
+Gestionnaire -> React : Modifie nom, concours et/ou capacité
+React -> GW : PATCH /salles/idSalle\n( corps JSON : nom, idConcours, capacite )
+GW -> Svc : Mise à jour
+Svc -> DB : UPDATE salle
+DB --> Svc : OK
+Svc --> React : 200 OK
+React --> Gestionnaire : Affichage mis à jour
+
+== Salles — Supprimer ==
+Gestionnaire -> React : Confirme suppression de la salle
+React -> GW : DELETE /salles/idSalle
+GW -> Svc : Suppression (répartition candidats ?)
+Svc -> DB : DELETE ou désactivation
+DB --> Svc : OK
+Svc --> React : 204 ou 409
+React --> Gestionnaire : Salle retirée ou erreur
+
+note right of Svc
+  Découpage possible en microservices séparés\n(Centre, Établissement, Salle) avec appels inter-services.
+  Les chemins REST sont indicatifs.
+end note
+
+@enduml

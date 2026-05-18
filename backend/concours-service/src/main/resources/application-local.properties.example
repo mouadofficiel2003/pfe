@@ -1,0 +1,6 @@
+# Copier vers application-local.properties (non versionné) et adapter.
+spring.datasource.url=jdbc:postgresql://localhost:5432/data_concours
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+auth.jwt.secret=pfe-dev-jwt-secret-key-change-me-min-32b!!
+lieux.service.base-url=http://localhost:8084

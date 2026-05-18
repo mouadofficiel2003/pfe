@@ -1,0 +1,7 @@
+# Copier en application-local.properties (non versionné) pour surcharges locales.
+#
+# spring.datasource.url=jdbc:postgresql://localhost:5432/data_candidats
+# spring.datasource.username=postgres
+# spring.datasource.password=postgres
+#
+# spring.flyway.locations=classpath:db/migration

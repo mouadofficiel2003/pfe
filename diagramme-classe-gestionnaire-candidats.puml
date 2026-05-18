@@ -1,0 +1,124 @@
+@startuml diagramme-classe-gestionnaire-candidats
+skinparam classAttributeIconSize 0
+skinparam shadowing false
+skinparam roundcorner 8
+title Diagramme de classes — Gestionnaire, Candidats, Concours, Lieux, Convocations
+
+class Gestionnaire {
+  - id : Long
+  --
+  + nomUtilisateur : String
+  + email : String
+}
+
+class Candidat {
+  - id : Long
+  --
+  + nom : String
+  + prenom : String
+  + ville : String
+  + cin : String
+  + telephone : String
+  + email : String
+  + numeroInscription : String
+  + specialite : String
+}
+
+class Concours {
+  - id : Long
+  --
+  + nomConcours : String
+  + numeroConcours : String
+  + dateConcours : Date
+}
+
+class Centre {
+  - id : Long
+  --
+  + nomCentre : String
+}
+
+class Etablissement {
+  - id : Long
+  --
+  + nomEtablissement : String
+}
+
+class Salle {
+  - id : Long
+  --
+  + nomSalle : String
+  + capacite : int
+}
+
+class Convocation {
+  - id : Long
+  --
+  + dateRemise : Date
+  + numeroPlace : int
+  + pdfGenere : boolean
+  + emailEnvoye : boolean
+}
+
+class InscriptionConcours {
+  - id : Long
+  note "Lien explicite candidat <-> concours\n(1 à N concours par candidat)"
+}
+
+class ImportCandidats {
+  - id : Long
+  --
+  + dateImport : Date
+  + sourceFichier : String
+}
+
+class Repartition {
+  - id : Long
+  --
+  + modeAutoOuManuel : String
+  + dateOperation : Date
+}
+
+' Structure géographique et lieux d'examen
+Centre "1" *-- "1..*" Etablissement : contient >
+Etablissement "1" *-- "1..*" Salle : contient >
+
+Centre "1" o-- "1..*" Concours : accueille >
+Etablissement "1" o-- "1..*" Concours : accueille >
+Concours "1" <-- "1..*" Salle : une salle = un concours\n(accueillie par)
+
+' Candidat et concours (1 à N)
+Candidat "1" *-- "1..*" InscriptionConcours
+Concours "1" *-- "0..*" InscriptionConcours
+
+' Affectation après répartition (au plus une affectation par lieu)
+Candidat "0..1" --> "1" Salle : affecté à >
+Candidat "0..1" --> "1" Centre : affecté à >
+Candidat "0..1" --> "1" Etablissement : affecté à >
+
+' Convocation unique par candidat
+Candidat "1" -- "1" Convocation : reçoit >
+
+' Plusieurs gestionnaires peuvent gérer les mêmes entités (N-N)
+Gestionnaire "1..*" -- "0..*" Candidat : gère
+Gestionnaire "1..*" -- "0..*" Concours : gère
+Gestionnaire "1..*" -- "0..*" Centre : gère
+Gestionnaire "1..*" -- "0..*" Etablissement : gère
+Gestionnaire "1..*" -- "0..*" Salle : gère
+
+' Import et répartition : plusieurs gestionnaires
+Gestionnaire "1..*" -- "0..*" ImportCandidats : réalise >
+ImportCandidats ..> Candidat : crée / met à jour
+
+Gestionnaire "1..*" -- "0..*" Repartition : réalise >
+Repartition ..> Candidat : met à jour les affectations
+
+Gestionnaire ..> Convocation : génère et envoie
+
+note right of InscriptionConcours
+  Si une convocation est nécessaire **par concours**,
+  rattacher Convocation à InscriptionConcours
+  plutôt qu'à Candidat seul.
+end note
+
+@enduml

@@ -1,0 +1,5 @@
+# Copier en application-local.properties (non versionné) pour surcharger la config locale.
+spring.datasource.url=jdbc:postgresql://localhost:5432/data_lieux
+spring.datasource.username=postgres
+spring.datasource.password=postgres
+auth.jwt.secret=votre-secret-32-octets-minimum-pour-jwt

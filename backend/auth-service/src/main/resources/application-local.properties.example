@@ -1,0 +1,8 @@
+# Optionnel : copier vers application-local.properties pour surcharger la config locale
+# sans modifier application.properties (fichier listé dans backend/.gitignore).
+#
+# spring.datasource.url=jdbc:postgresql://localhost:5432/PFE_Data
+# spring.datasource.username=postgres
+# spring.datasource.password=postgres
+#
+# spring.flyway.locations=classpath:db/migration

@@ -1,0 +1,89 @@
+package com.pfe.lieux.concours;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import okhttp3.mockwebserver.MockResponse;
+import okhttp3.mockwebserver.MockWebServer;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
+
+class ConcoursExistenceClientTest {
+
+    private MockWebServer mockWebServer;
+    private ConcoursExistenceClient client;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        mockWebServer = new MockWebServer();
+        mockWebServer.start();
+        String baseUrl = "http://localhost:" + mockWebServer.getPort();
+        RestClient restClient = RestClient.builder().baseUrl(baseUrl).build();
+        client = new ConcoursExistenceClient(restClient);
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        mockWebServer.shutdown();
+    }
+
+    @Test
+    void assertConcoursExists_nullId_nePasAppelerHttp() throws Exception {
+        client.assertConcoursExists(null, "Bearer token");
+        assertThat(mockWebServer.getRequestCount()).isZero();
+    }
+
+    @Test
+    void assertConcoursExists_200_nePasLever() throws Exception {
+        mockWebServer.enqueue(new MockResponse().setResponseCode(200));
+        client.assertConcoursExists(3L, "Bearer abc.def.ghi");
+        var req = mockWebServer.takeRequest();
+        assertThat(req.getMethod()).isEqualTo("GET");
+        assertThat(req.getPath()).isEqualTo("/api/concours/3");
+        assertThat(req.getHeader("Authorization")).isEqualTo("Bearer abc.def.ghi");
+    }
+
+    @Test
+    void assertConcoursExists_404_badRequest() {
+        mockWebServer.enqueue(new MockResponse().setResponseCode(404));
+        assertThatThrownBy(() -> client.assertConcoursExists(99L, "Bearer x"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(400));
+    }
+
+    @Test
+    void assertConcoursExists_401_badGateway() {
+        mockWebServer.enqueue(new MockResponse().setResponseCode(401));
+        assertThatThrownBy(() -> client.assertConcoursExists(1L, "Bearer x"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(502));
+    }
+
+    @Test
+    void listConcoursIdsByCentre_200_retourneIds() throws Exception {
+        mockWebServer.enqueue(
+                new MockResponse()
+                        .setResponseCode(200)
+                        .setHeader("Content-Type", "application/json")
+                        .setBody("[{\"id\":1,\"nomConcours\":\"A\"},{\"id\":2,\"nomConcours\":\"B\"}]"));
+        assertThat(client.listConcoursIdsByCentre(7L, "Bearer token")).containsExactly(1L, 2L);
+        var req = mockWebServer.takeRequest();
+        assertThat(req.getPath()).isEqualTo("/api/concours/by-centre/7");
+    }
+
+    @Test
+    void listConcoursIdsByCentre_sansBearer_listeVide() {
+        assertThat(client.listConcoursIdsByCentre(7L, null)).isEmpty();
+        assertThat(mockWebServer.getRequestCount()).isZero();
+    }
+
+    @Test
+    void assertConcoursExists_sansBearer_unauthorized() {
+        assertThatThrownBy(() -> client.assertConcoursExists(1L, "Basic xxx"))
+                .isInstanceOf(ResponseStatusException.class)
+                .satisfies(ex -> assertThat(((ResponseStatusException) ex).getStatusCode().value()).isEqualTo(401));
+    }
+}
