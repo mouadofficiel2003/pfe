@@ -1,0 +1,11 @@
+# Copier en application-local.properties (non versionné) pour surcharges locales.
+#
+# spring.datasource.url=jdbc:postgresql://localhost:5432/data_repartition
+# spring.datasource.username=postgres
+# spring.datasource.password=postgres
+#
+# spring.flyway.locations=classpath:db/migration
+#
+# concours.service.base-url=http://localhost:8083
+# lieux.service.base-url=http://localhost:8084
+# candidat.service.base-url=http://localhost:8082

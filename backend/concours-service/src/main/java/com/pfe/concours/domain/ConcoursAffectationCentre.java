@@ -19,14 +19,14 @@ public class ConcoursAffectationCentre {
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "concours_id", nullable = false)
+    @JoinColumn(name = "numero_concours", referencedColumnName = "numero_concours", nullable = false)
     private Concours concours;
+
+    @Column(name = "id_centre", nullable = false)
+    private Long idCentre;
 
     @Column(name = "nom_centre", nullable = false, length = 200)
     private String nomCentre;
-
-    @Column(name = "centre_id")
-    private Long centreId;
 
     public Long getId() {
         return id;
@@ -44,19 +44,19 @@ public class ConcoursAffectationCentre {
         this.concours = concours;
     }
 
+    public Long getIdCentre() {
+        return idCentre;
+    }
+
+    public void setIdCentre(Long idCentre) {
+        this.idCentre = idCentre;
+    }
+
     public String getNomCentre() {
         return nomCentre;
     }
 
     public void setNomCentre(String nomCentre) {
         this.nomCentre = nomCentre;
-    }
-
-    public Long getCentreId() {
-        return centreId;
-    }
-
-    public void setCentreId(Long centreId) {
-        this.centreId = centreId;
     }
 }

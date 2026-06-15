@@ -17,10 +17,11 @@ public class Salle {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_salle")
+    private Long idSalle;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "etablissement_id", nullable = false)
+    @JoinColumn(name = "etablissement_id", referencedColumnName = "id_etablissement", nullable = false)
     private Etablissement etablissement;
 
     @Column(name = "nom_salle", nullable = false, length = 200)
@@ -29,9 +30,9 @@ public class Salle {
     @Column(name = "nombre_places", nullable = false)
     private int nombrePlaces;
 
-    /** Identifiant du concours dans concours-service (pas de FK inter-bases). */
-    @Column(name = "concours_id")
-    private Long concoursId;
+    /** Référence logique vers concours.numero_concours (service concours) ; validée à l'écriture via API. */
+    @Column(name = "numero_concours", length = 80)
+    private String numeroConcours;
 
     @Column(name = "cree_le", nullable = false)
     private Instant creeLe;
@@ -39,12 +40,12 @@ public class Salle {
     @Column(name = "modifie_le", nullable = false)
     private Instant modifieLe;
 
-    public Long getId() {
-        return id;
+    public Long getIdSalle() {
+        return idSalle;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setIdSalle(Long idSalle) {
+        this.idSalle = idSalle;
     }
 
     public Etablissement getEtablissement() {
@@ -71,12 +72,12 @@ public class Salle {
         this.nombrePlaces = nombrePlaces;
     }
 
-    public Long getConcoursId() {
-        return concoursId;
+    public String getNumeroConcours() {
+        return numeroConcours;
     }
 
-    public void setConcoursId(Long concoursId) {
-        this.concoursId = concoursId;
+    public void setNumeroConcours(String numeroConcours) {
+        this.numeroConcours = numeroConcours;
     }
 
     public Instant getCreeLe() {

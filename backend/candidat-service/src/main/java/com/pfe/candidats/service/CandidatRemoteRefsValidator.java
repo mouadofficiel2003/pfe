@@ -55,8 +55,10 @@ public class CandidatRemoteRefsValidator {
                     "L'établissement indiqué ne correspond pas à l'établissement de la salle " + req.idSalle());
         }
 
-        Long salleConcours = salle.concoursId();
-        if (salleConcours != null && !Objects.equals(concours.concoursId(), salleConcours)) {
+        String salleConcours = salle.numeroConcours();
+        if (salleConcours != null
+                && !salleConcours.isBlank()
+                && !Objects.equals(concours.numeroConcours(), salleConcours)) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "La salle est réservée au concours "

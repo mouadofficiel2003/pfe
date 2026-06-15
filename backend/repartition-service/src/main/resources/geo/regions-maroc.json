@@ -1,0 +1,84 @@
+[
+  {
+    "nom": "Tanger-Tetouan-Al Hoceima",
+    "villes": [
+      "Tanger", "Asilah", "M'diq", "Mdiq", "Fnideq", "Tetouan", "Tétouan",
+      "Fahs-Anjra", "Larache", "Al Hoceima", "Al Hoceïma", "Chefchaouen", "Ouezzane"
+    ]
+  },
+  {
+    "nom": "Oujda-Nador",
+    "villes": [
+      "Oujda", "Angad", "Nador", "Driouch", "Jerada", "Berkane", "Taourirt",
+      "Guercif", "Figuig"
+    ]
+  },
+  {
+    "nom": "Fes-Meknes",
+    "villes": [
+      "Fes", "Fès", "Meknes", "Meknès", "Taza", "El Hajeb", "Ifrane",
+      "Moulay Yacoub", "Moulay Yaâcoub", "Sefrou", "Séfrou", "Boulemane",
+      "Taounate"
+    ]
+  },
+  {
+    "nom": "Rabat-Sale-Kenitra",
+    "villes": [
+      "Rabat", "Sale", "Salé", "Skhirat", "Skhirate", "Temara", "Témara",
+      "Kenitra", "Kénitra", "Khemisset", "Khémisset", "Sidi Kacem", "Sidi Slimane"
+    ]
+  },
+  {
+    "nom": "Beni Mellal-Khenifra",
+    "villes": [
+      "Beni Mellal", "Béni-Mellal", "Béni Mellal", "Azilal", "Fquih Ben Salah",
+      "Khenifra", "Khénifra", "Khouribga"
+    ]
+  },
+  {
+    "nom": "Casablanca-Settat",
+    "villes": [
+      "Casablanca", "Casa", "Mohammedia", "Mohammédia", "El Jadida", "Jadida",
+      "Nouaceur", "Mediouna", "Médiouna", "Benslimane", "Berrechid", "Settat",
+      "Sidi Bennour"
+    ]
+  },
+  {
+    "nom": "Marrakech-Safi",
+    "villes": [
+      "Marrakech", "Marrakesh", "Marrackech", "Chichaoua", "Al Haouz", "El Kelaa des Sraghna",
+      "El Kelaâ des Sraghna", "Essaouira", "Rehamna", "Safi", "Youssoufia"
+    ]
+  },
+  {
+    "nom": "Draa-Tafilalet",
+    "villes": [
+      "Errachidia", "Ouarzazate", "Midelt", "Tinghir", "Zagora"
+    ]
+  },
+  {
+    "nom": "Souss-Massa",
+    "villes": [
+      "Agadir", "Inezgane", "Chtouka-Ait Baha", "Chtouka-Aït Baha", "Taroudant",
+      "Tata"
+    ]
+  },
+  {
+    "nom": "Guelmim-Oued Noun",
+    "villes": [
+      "Guelmim", "Assa-Zag", "Tan-Tan", "Tantan", "Sidi Ifni"
+    ]
+  },
+  {
+    "nom": "Laayoune-Sakia El Hamra",
+    "villes": [
+      "Laayoune", "Laâyoune", "Boujdour", "Tarfaya", "Es-Semara"
+    ]
+  },
+  {
+    "nom": "Dakhla-Oued Ed-Dahab",
+    "villes": [
+      "Dakhla", "Oued Ed-Dahab", "Aousserd"
+    ]
+  }
+]

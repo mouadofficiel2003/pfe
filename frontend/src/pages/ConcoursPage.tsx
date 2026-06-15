@@ -10,9 +10,10 @@ import {
   type ConcoursDto,
   type ConcoursWritePayload,
 } from "../api/concoursApi";
+import { fetchCentres, type CentreListItemDto } from "../api/lieuxApi";
 import { useAuth } from "../auth/AuthContext";
 
-type CentreFormRow = { nomCentre: string; centreId: string };
+type CentreFormRow = { idCentre: string };
 
 function isoToDatetimeLocal(iso: string): string {
   const d = new Date(iso);
@@ -26,16 +27,23 @@ function rowsToPayload(
   numeroConcours: string,
   dateLocal: string,
   rows: CentreFormRow[],
+  lieuxCentres: CentreListItemDto[],
 ): ConcoursWritePayload {
+  const byId = new Map(lieuxCentres.map((c) => [c.idCentre, c]));
   const centres: CentreAffectationWrite[] = rows
-    .filter((r) => r.nomCentre.trim())
-    .map((r) => ({
-      nomCentre: r.nomCentre.trim(),
-      centreId: r.centreId.trim() ? Number(r.centreId.trim()) : null,
-    }));
+    .filter((r) => r.idCentre.trim())
+    .map((r) => {
+      const idCentre = Number(r.idCentre.trim());
+      const centre = byId.get(idCentre);
+      return {
+        idCentre,
+        nomCentre: centre?.nomCentre ?? "",
+      };
+    })
+    .filter((c) => c.nomCentre);
   return {
     nomConcours: nomConcours.trim(),
-    numeroConcours: numeroConcours.trim() || null,
+    numeroConcours: numeroConcours.trim(),
     dateHeureExamen: new Date(dateLocal).toISOString(),
     centres,
   };
@@ -50,12 +58,22 @@ export default function ConcoursPage() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const [formOpen, setFormOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingNumero, setEditingNumero] = useState<string | null>(null);
   const [nomConcours, setNomConcours] = useState("");
   const [numeroConcours, setNumeroConcours] = useState("");
   const [dateLocal, setDateLocal] = useState("");
-  const [centreRows, setCentreRows] = useState<CentreFormRow[]>([{ nomCentre: "", centreId: "" }]);
+  const [centreRows, setCentreRows] = useState<CentreFormRow[]>([{ idCentre: "" }]);
+  const [lieuxCentres, setLieuxCentres] = useState<CentreListItemDto[]>([]);
   const [saving, setSaving] = useState(false);
+
+  const loadLieuxCentres = useCallback(async () => {
+    try {
+      const data = await fetchCentres();
+      setLieuxCentres(data);
+    } catch {
+      setLieuxCentres([]);
+    }
+  }, []);
 
   const loadList = useCallback(async () => {
     setLoading(true);
@@ -95,44 +113,46 @@ export default function ConcoursPage() {
 
   function openCreate() {
     setActionError(null);
-    setEditingId(null);
+    setEditingNumero(null);
     setNomConcours("");
     setNumeroConcours("");
     setDateLocal("");
-    setCentreRows([{ nomCentre: "", centreId: "" }]);
+    setCentreRows([{ idCentre: "" }]);
     setFormOpen(true);
+    void loadLieuxCentres();
   }
 
   function openEdit(c: ConcoursDto) {
     setActionError(null);
-    setEditingId(c.id);
+    setEditingNumero(c.numeroConcours);
     setNomConcours(c.nomConcours);
     setNumeroConcours(c.numeroConcours ?? "");
     setDateLocal(isoToDatetimeLocal(c.dateHeureExamen));
     setCentreRows(
       c.centres.length
-        ? c.centres.map((x) => ({ nomCentre: x.nomCentre, centreId: x.centreId != null ? String(x.centreId) : "" }))
-        : [{ nomCentre: "", centreId: "" }],
+        ? c.centres.map((x) => ({ idCentre: String(x.idCentre) }))
+        : [{ idCentre: "" }],
     );
     setFormOpen(true);
+    void loadLieuxCentres();
   }
 
   function closeForm() {
     setFormOpen(false);
-    setEditingId(null);
+    setEditingNumero(null);
     setSaving(false);
   }
 
   function addCentreRow() {
-    setCentreRows((r) => [...r, { nomCentre: "", centreId: "" }]);
+    setCentreRows((r) => [...r, { idCentre: "" }]);
   }
 
   function removeCentreRow(index: number) {
     setCentreRows((r) => (r.length <= 1 ? r : r.filter((_, i) => i !== index)));
   }
 
-  function setCentreRow(index: number, field: keyof CentreFormRow, value: string) {
-    setCentreRows((rows) => rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
+  function setCentreRow(index: number, idCentre: string) {
+    setCentreRows((rows) => rows.map((row, i) => (i === index ? { idCentre } : row)));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -144,25 +164,30 @@ export default function ConcoursPage() {
       setSaving(false);
       return;
     }
-    const payload = rowsToPayload(nomConcours, numeroConcours, dateLocal, centreRows);
+    if (!numeroConcours.trim()) {
+      setActionError("Indiquez le numéro de concours.");
+      setSaving(false);
+      return;
+    }
+    const payload = rowsToPayload(nomConcours, numeroConcours, dateLocal, centreRows, lieuxCentres);
     if (!payload.centres.length) {
-      setActionError("Ajoutez au moins un centre (nom du centre).");
+      setActionError("Ajoutez au moins un centre (choisi dans lieux-service).");
       setSaving(false);
       return;
     }
     try {
-      if (editingId == null) {
+      if (editingNumero == null) {
         await createConcours(payload);
       } else {
-        await updateConcours(editingId, payload);
+        await updateConcours(editingNumero, payload);
       }
       closeForm();
       await loadList();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
         setActionError("Modification réservée au gestionnaire.");
-      } else if (axios.isAxiosError(err) && err.response?.status === 409) {
-        setActionError("Numéro de concours déjà utilisé.");
+      } else if (axios.isAxiosError(err) && err.response?.data && typeof err.response.data === "object" && "message" in err.response.data && typeof err.response.data.message === "string") {
+        setActionError(err.response.data.message);
       } else {
         setActionError(err instanceof Error ? err.message : "Échec de l’enregistrement.");
       }
@@ -175,7 +200,7 @@ export default function ConcoursPage() {
     if (!window.confirm(`Supprimer le concours « ${c.nomConcours} » ?`)) return;
     setActionError(null);
     try {
-      await deleteConcours(c.id);
+      await deleteConcours(c.numeroConcours);
       await loadList();
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
@@ -201,6 +226,9 @@ export default function ConcoursPage() {
               </Link>
               <Link style={navLink} to="/lieux">
                 Lieux
+              </Link>
+              <Link style={navLink} to="/repartition">
+                Répartition
               </Link>
             </nav>
           </div>
@@ -247,6 +275,7 @@ export default function ConcoursPage() {
               <table style={table}>
                 <thead>
                   <tr>
+                    <th style={th}>Numéro</th>
                     <th style={th}>Nom</th>
                     <th style={th}>N° concours</th>
                     <th style={th}>Date / heure</th>
@@ -256,7 +285,8 @@ export default function ConcoursPage() {
                 </thead>
                 <tbody>
                   {list.map((c) => (
-                    <tr key={c.id}>
+                    <tr key={c.numeroConcours}>
+                      <td style={td}>{c.numeroConcours}</td>
                       <td style={td}>{c.nomConcours}</td>
                       <td style={td}>{c.numeroConcours ?? "—"}</td>
                       <td style={td}>{new Date(c.dateHeureExamen).toLocaleString()}</td>
@@ -289,7 +319,7 @@ export default function ConcoursPage() {
               aria-modal="true"
               onMouseDown={(ev) => ev.stopPropagation()}
             >
-              <h2 style={modalTitle}>{editingId == null ? "Nouveau concours" : "Modifier le concours"}</h2>
+              <h2 style={modalTitle}>{editingNumero == null ? "Nouveau concours" : "Modifier le concours"}</h2>
               <form onSubmit={(e) => void handleSubmit(e)}>
                 <div style={formGrid}>
                   <label style={{ ...label, gridColumn: "1 / -1" }}>
@@ -303,12 +333,15 @@ export default function ConcoursPage() {
                     />
                   </label>
                   <label style={label}>
-                    N° concours (optionnel)
+                    N° concours
                     <input
                       style={input}
                       value={numeroConcours}
                       onChange={(e) => setNumeroConcours(e.target.value)}
                       maxLength={80}
+                      required
+                      readOnly={editingNumero != null}
+                      disabled={editingNumero != null}
                     />
                   </label>
                   <label style={label}>
@@ -322,28 +355,31 @@ export default function ConcoursPage() {
                     />
                   </label>
                 </div>
-                <p style={hint}>Centres — au moins une ligne. Le nom doit correspondre à la logique de répartition (ville / centre).</p>
+                <p style={hint}>Centres — sélectionnez des centres existants (lieux-service). id_centre est utilisé entre microservices ; le nom est enregistré pour l’affichage.</p>
+                {lieuxCentres.length === 0 ? (
+                  <p style={hint}>
+                    Aucun centre disponible.{" "}
+                    <Link to="/lieux">Créez des centres</Link> avant de planifier un concours.
+                  </p>
+                ) : null}
                 {centreRows.map((row, index) => (
                   <div key={index} style={centreRow}>
-                    <label style={{ ...label, flex: 2 }}>
-                      Nom du centre
-                      <input
-                        style={input}
-                        value={row.nomCentre}
-                        onChange={(e) => setCentreRow(index, "nomCentre", e.target.value)}
-                        placeholder="ex. Centre Rabat"
-                        maxLength={200}
-                      />
-                    </label>
                     <label style={{ ...label, flex: 1 }}>
-                      ID centre (optionnel)
-                      <input
+                      Centre
+                      <select
                         style={input}
-                        value={row.centreId}
-                        onChange={(e) => setCentreRow(index, "centreId", e.target.value)}
-                        placeholder="lieux"
-                        inputMode="numeric"
-                      />
+                        value={row.idCentre}
+                        onChange={(e) => setCentreRow(index, e.target.value)}
+                        required
+                        disabled={readOnly || lieuxCentres.length === 0}
+                      >
+                        <option value="">— Choisir —</option>
+                        {lieuxCentres.map((c) => (
+                          <option key={c.idCentre} value={String(c.idCentre)}>
+                            {c.nomCentre}
+                          </option>
+                        ))}
+                      </select>
                     </label>
                     {!readOnly && centreRows.length > 1 ? (
                       <button type="button" style={btnGhost} onClick={() => removeCentreRow(index)}>

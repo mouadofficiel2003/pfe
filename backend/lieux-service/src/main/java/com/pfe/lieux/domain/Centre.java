@@ -18,7 +18,8 @@ public class Centre {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_centre")
+    private Long idCentre;
 
     @Column(name = "nom_centre", nullable = false, length = 200, unique = true)
     private String nomCentre;
@@ -38,12 +39,12 @@ public class Centre {
         }
     }
 
-    public Long getId() {
-        return id;
+    public Long getIdCentre() {
+        return idCentre;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setIdCentre(Long idCentre) {
+        this.idCentre = idCentre;
     }
 
     public String getNomCentre() {

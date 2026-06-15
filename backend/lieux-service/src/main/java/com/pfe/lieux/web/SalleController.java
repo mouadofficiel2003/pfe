@@ -26,22 +26,22 @@ public class SalleController {
     }
 
     @GetMapping
-    public List<SalleAvecLieuxResponse> listerParConcours(@RequestParam long concoursId) {
-        return lieuxApplicationService.listerSallesParConcours(concoursId);
+    public List<SalleAvecLieuxResponse> listerParConcours(@RequestParam String numeroConcours) {
+        return lieuxApplicationService.listerSallesParConcours(numeroConcours);
     }
 
-    @GetMapping("/{id}")
-    public SalleAvecLieuxResponse obtenir(@PathVariable Long id) {
-        return lieuxApplicationService.obtenirSalle(id);
+    @GetMapping("/{idSalle}")
+    public SalleAvecLieuxResponse obtenir(@PathVariable Long idSalle) {
+        return lieuxApplicationService.obtenirSalle(idSalle);
     }
 
-    @PutMapping("/{id}")
-    public SalleResponse mettreAJour(@PathVariable Long id, @Valid @RequestBody SalleWriteRequest body) {
-        return lieuxApplicationService.mettreAJourSalle(id, body);
+    @PutMapping("/{idSalle}")
+    public SalleResponse mettreAJour(@PathVariable Long idSalle, @Valid @RequestBody SalleWriteRequest body) {
+        return lieuxApplicationService.mettreAJourSalle(idSalle, body);
     }
 
-    @DeleteMapping("/{id}")
-    public void supprimer(@PathVariable Long id) {
-        lieuxApplicationService.supprimerSalle(id);
+    @DeleteMapping("/{idSalle}")
+    public void supprimer(@PathVariable Long idSalle) {
+        lieuxApplicationService.supprimerSalle(idSalle);
     }
 }

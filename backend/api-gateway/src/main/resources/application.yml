@@ -1,0 +1,57 @@
+spring:
+  application:
+    name: api-gateway
+  cloud:
+    gateway:
+      # Dedupe CORS headers: downstream services aussi renvoient des en-tetes CORS,
+      # ce filtre evite les en-tetes Access-Control-* en double (erreur navigateur).
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
+      # CORS gere ici (point d'entree unique du navigateur).
+      globalcors:
+        cors-configurations:
+          "[/**]":
+            allowedOrigins:
+              - "http://localhost:5173"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+      # Routage par prefixe de chemin. L'en-tete Authorization (Bearer JWT) est
+      # transmis tel quel ; chaque service valide le JWT lui-meme.
+      routes:
+        - id: auth-service
+          uri: ${AUTH_SERVICE_URI:http://localhost:8081}
+          predicates:
+            - Path=/auth/**
+        - id: candidat-service
+          uri: ${CANDIDAT_SERVICE_URI:http://localhost:8082}
+          predicates:
+            - Path=/api/candidats/**
+        - id: concours-service
+          uri: ${CONCOURS_SERVICE_URI:http://localhost:8083}
+          predicates:
+            - Path=/api/concours/**
+        - id: lieux-service
+          uri: ${LIEUX_SERVICE_URI:http://localhost:8084}
+          predicates:
+            - Path=/api/centres/**,/api/etablissements/**,/api/salles/**
+        - id: repartition-service
+          uri: ${REPARTITION_SERVICE_URI:http://localhost:8085}
+          predicates:
+            - Path=/api/repartition/**
+
+server:
+  port: 8080
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,gateway

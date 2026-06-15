@@ -49,10 +49,10 @@ public class LieuxApplicationService {
         List<Centre> centres = listerCentresDepuisBase();
         return centres.stream()
                 .map(c -> new CentreListItemResponse(
-                        c.getId(),
+                        c.getIdCentre(),
                         c.getNomCentre(),
-                        etablissementRepository.countByCentreId(c.getId()),
-                        concoursIdsPourCentre(c.getId())))
+                        etablissementRepository.countByCentreId(c.getIdCentre()),
+                        concoursNumerosPourCentre(c.getIdCentre())))
                 .toList();
     }
 
@@ -62,15 +62,17 @@ public class LieuxApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public CentreDetailResponse obtenirCentre(Long id) {
+    public CentreDetailResponse obtenirCentre(Long idCentre) {
         Centre centre = centreRepository
-                .findById(id)
+                .findById(idCentre)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Centre introuvable"));
-        List<EtablissementDetailResponse> etabs = etablissementRepository.findByCentreIdWithSalles(centre.getId()).stream()
-                .sorted(Comparator.comparing(Etablissement::getNomEtablissement, String.CASE_INSENSITIVE_ORDER))
-                .map(this::toEtablissementDetail)
-                .toList();
-        return new CentreDetailResponse(centre.getId(), centre.getNomCentre(), concoursIdsPourCentre(centre.getId()), etabs);
+        List<EtablissementDetailResponse> etabs =
+                etablissementRepository.findByCentreIdWithSalles(centre.getIdCentre()).stream()
+                        .sorted(Comparator.comparing(Etablissement::getNomEtablissement, String.CASE_INSENSITIVE_ORDER))
+                        .map(this::toEtablissementDetail)
+                        .toList();
+        return new CentreDetailResponse(
+                centre.getIdCentre(), centre.getNomCentre(), concoursNumerosPourCentre(centre.getIdCentre()), etabs);
     }
 
     @Transactional
@@ -87,16 +89,16 @@ public class LieuxApplicationService {
         } catch (DataIntegrityViolationException e) {
             throw conflitNomCentre();
         }
-        return obtenirCentre(c.getId());
+        return obtenirCentre(c.getIdCentre());
     }
 
     @Transactional
-    public CentreDetailResponse mettreAJourCentre(Long id, CentreNomRequest req) {
+    public CentreDetailResponse mettreAJourCentre(Long idCentre, CentreNomRequest req) {
         Centre centre = centreRepository
-                .findById(id)
+                .findById(idCentre)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Centre introuvable"));
         String nom = req.nomCentre().trim();
-        assertNomCentreLibre(nom, id);
+        assertNomCentreLibre(nom, idCentre);
         centre.setNomCentre(nom);
         centre.setModifieLe(Instant.now());
         try {
@@ -104,15 +106,15 @@ public class LieuxApplicationService {
         } catch (DataIntegrityViolationException e) {
             throw conflitNomCentre();
         }
-        return obtenirCentre(id);
+        return obtenirCentre(idCentre);
     }
 
     @Transactional
-    public void supprimerCentre(Long id) {
-        if (!centreRepository.existsById(id)) {
+    public void supprimerCentre(Long idCentre) {
+        if (!centreRepository.existsById(idCentre)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Centre introuvable");
         }
-        centreRepository.deleteById(id);
+        centreRepository.deleteById(idCentre);
     }
 
     @Transactional
@@ -121,7 +123,7 @@ public class LieuxApplicationService {
                 .findById(centreId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Centre introuvable"));
         String nom = req.nomEtablissement().trim();
-        if (etablissementRepository.existsByCentreIdAndNomEtablissementIgnoreCase(centreId, nom)) {
+        if (etablissementRepository.existsByCentre_IdCentreAndNomEtablissementIgnoreCase(centreId, nom)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Un établissement avec ce nom existe déjà dans ce centre");
         }
@@ -137,25 +139,26 @@ public class LieuxApplicationService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Un établissement avec ce nom existe déjà dans ce centre");
         }
-        return toEtablissementDetail(etablissementRepository.findByIdWithSalles(e.getId()).orElse(e));
+        return toEtablissementDetail(etablissementRepository.findByIdWithSalles(e.getIdEtablissement()).orElse(e));
     }
 
     @Transactional(readOnly = true)
-    public EtablissementDetailResponse obtenirEtablissement(Long id) {
+    public EtablissementDetailResponse obtenirEtablissement(Long idEtablissement) {
         Etablissement e = etablissementRepository
-                .findByIdWithSalles(id)
+                .findByIdWithSalles(idEtablissement)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable"));
         return toEtablissementDetail(e);
     }
 
     @Transactional
-    public EtablissementDetailResponse mettreAJourEtablissement(Long id, EtablissementNomRequest req) {
+    public EtablissementDetailResponse mettreAJourEtablissement(Long idEtablissement, EtablissementNomRequest req) {
         Etablissement e = etablissementRepository
-                .findById(id)
+                .findById(idEtablissement)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable"));
-        Long centreId = e.getCentre().getId();
+        Long centreId = e.getCentre().getIdCentre();
         String nom = req.nomEtablissement().trim();
-        if (etablissementRepository.existsByCentreIdAndNomEtablissementIgnoreCaseAndIdNot(centreId, nom, id)) {
+        if (etablissementRepository.existsByCentre_IdCentreAndNomEtablissementIgnoreCaseAndIdEtablissementNot(
+                centreId, nom, idEtablissement)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Un établissement avec ce nom existe déjà dans ce centre");
         }
@@ -167,15 +170,15 @@ public class LieuxApplicationService {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Un établissement avec ce nom existe déjà dans ce centre");
         }
-        return obtenirEtablissement(id);
+        return obtenirEtablissement(idEtablissement);
     }
 
     @Transactional
-    public void supprimerEtablissement(Long id) {
-        if (!etablissementRepository.existsById(id)) {
+    public void supprimerEtablissement(Long idEtablissement) {
+        if (!etablissementRepository.existsById(idEtablissement)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable");
         }
-        etablissementRepository.deleteById(id);
+        etablissementRepository.deleteById(idEtablissement);
     }
 
     @Transactional
@@ -184,17 +187,18 @@ public class LieuxApplicationService {
                 .findById(etablissementId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Établissement introuvable"));
         String nom = req.nomSalle().trim();
-        if (salleRepository.existsByEtablissementIdAndNomSalleIgnoreCase(etablissementId, nom)) {
+        if (salleRepository.existsByEtablissement_IdEtablissementAndNomSalleIgnoreCase(etablissementId, nom)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Une salle avec ce nom existe déjà dans cet établissement");
         }
-        validerConcoursId(req.concoursId());
+        String numeroConcours = blankToNull(req.numeroConcours());
+        validerNumeroConcours(numeroConcours);
         Instant now = Instant.now();
         Salle s = new Salle();
         s.setEtablissement(etab);
         s.setNomSalle(nom);
         s.setNombrePlaces(req.nombrePlaces());
-        s.setConcoursId(req.concoursId());
+        s.setNumeroConcours(numeroConcours);
         s.setCreeLe(now);
         s.setModifieLe(now);
         try {
@@ -207,36 +211,38 @@ public class LieuxApplicationService {
     }
 
     @Transactional(readOnly = true)
-    public List<SalleAvecLieuxResponse> listerSallesParConcours(Long concoursId) {
-        validerConcoursId(concoursId);
-        return salleRepository.findByConcoursIdOrderByNomSalleAsc(concoursId).stream()
+    public List<SalleAvecLieuxResponse> listerSallesParConcours(String numeroConcours) {
+        validerNumeroConcours(numeroConcours);
+        return salleRepository.findByNumeroConcoursOrderByNomSalleAsc(numeroConcours.trim()).stream()
                 .map(this::toSalleAvecLieux)
                 .toList();
     }
 
     @Transactional(readOnly = true)
-    public SalleAvecLieuxResponse obtenirSalle(Long id) {
+    public SalleAvecLieuxResponse obtenirSalle(Long idSalle) {
         Salle s = salleRepository
-                .findByIdWithEtablissementAndCentre(id)
+                .findByIdWithEtablissementAndCentre(idSalle)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle introuvable"));
         return toSalleAvecLieux(s);
     }
 
     @Transactional
-    public SalleResponse mettreAJourSalle(Long id, SalleWriteRequest req) {
+    public SalleResponse mettreAJourSalle(Long idSalle, SalleWriteRequest req) {
         Salle s = salleRepository
-                .findById(id)
+                .findById(idSalle)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle introuvable"));
-        Long etabId = s.getEtablissement().getId();
+        Long etabId = s.getEtablissement().getIdEtablissement();
         String nom = req.nomSalle().trim();
-        if (salleRepository.existsByEtablissementIdAndNomSalleIgnoreCaseAndIdNot(etabId, nom, id)) {
+        if (salleRepository.existsByEtablissement_IdEtablissementAndNomSalleIgnoreCaseAndIdSalleNot(
+                etabId, nom, idSalle)) {
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, "Une salle avec ce nom existe déjà dans cet établissement");
         }
-        validerConcoursId(req.concoursId());
+        String numeroConcours = blankToNull(req.numeroConcours());
+        validerNumeroConcours(numeroConcours);
         s.setNomSalle(nom);
         s.setNombrePlaces(req.nombrePlaces());
-        s.setConcoursId(req.concoursId());
+        s.setNumeroConcours(numeroConcours);
         s.setModifieLe(Instant.now());
         try {
             salleRepository.save(s);
@@ -248,23 +254,23 @@ public class LieuxApplicationService {
     }
 
     @Transactional
-    public void supprimerSalle(Long id) {
-        if (!salleRepository.existsById(id)) {
+    public void supprimerSalle(Long idSalle) {
+        if (!salleRepository.existsById(idSalle)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Salle introuvable");
         }
-        salleRepository.deleteById(id);
+        salleRepository.deleteById(idSalle);
     }
 
-    /** {@code concours_id} est une référence logique vers concours-service (pas de FK inter-bases). */
-    private void validerConcoursId(Long concoursId) {
-        concoursExistenceClient.assertConcoursExists(concoursId, HttpRequestContext.authorizationHeaderOrNull());
+    /** {@code numero_concours} est une référence logique vers concours-service (pas de FK inter-bases). */
+    private void validerNumeroConcours(String numeroConcours) {
+        concoursExistenceClient.assertConcoursExists(numeroConcours, HttpRequestContext.authorizationHeaderOrNull());
     }
 
-    private void assertNomCentreLibre(String nom, Long excludeId) {
+    private void assertNomCentreLibre(String nom, Long excludeIdCentre) {
         boolean taken =
-                excludeId == null
+                excludeIdCentre == null
                         ? centreRepository.existsByNomCentreIgnoreCase(nom)
-                        : centreRepository.existsByNomCentreIgnoreCaseAndIdNot(nom, excludeId);
+                        : centreRepository.existsByNomCentreIgnoreCaseAndIdCentreNot(nom, excludeIdCentre);
         if (taken) {
             throw conflitNomCentre();
         }
@@ -274,42 +280,53 @@ public class LieuxApplicationService {
         return new ResponseStatusException(HttpStatus.CONFLICT, "Un centre avec ce nom existe déjà");
     }
 
+    private static String blankToNull(String s) {
+        if (s == null) {
+            return null;
+        }
+        String t = s.trim();
+        return t.isEmpty() ? null : t;
+    }
+
     private EtablissementDetailResponse toEtablissementDetail(Etablissement e) {
         List<SalleResponse> salles = e.getSalles().stream()
                 .sorted(Comparator.comparing(Salle::getNomSalle, String.CASE_INSENSITIVE_ORDER))
                 .map(this::toSalleResponse)
                 .toList();
         return new EtablissementDetailResponse(
-                e.getId(), e.getNomEtablissement(), concoursIdsPourEtablissement(e.getId()), salles);
+                e.getIdEtablissement(),
+                e.getNomEtablissement(),
+                concoursNumerosPourEtablissement(e.getIdEtablissement()),
+                salles);
     }
 
-    private List<Long> concoursIdsPourCentre(Long centreId) {
-        TreeSet<Long> ids = new TreeSet<>(salleRepository.findDistinctConcoursIdsByCentreId(centreId));
-        ids.addAll(concoursExistenceClient.listConcoursIdsByCentre(
+    private List<String> concoursNumerosPourCentre(Long centreId) {
+        TreeSet<String> numeros = new TreeSet<>(salleRepository.findDistinctConcoursNumerosByCentreId(centreId));
+        numeros.addAll(concoursExistenceClient.listConcoursNumerosByCentre(
                 centreId, HttpRequestContext.authorizationHeaderOrNull()));
-        return List.copyOf(ids);
+        return List.copyOf(numeros);
     }
 
     /** Concours d'un établissement : distincts des salles de l'établissement. */
-    private List<Long> concoursIdsPourEtablissement(Long etablissementId) {
-        return salleRepository.findDistinctConcoursIdsByEtablissementId(etablissementId);
+    private List<String> concoursNumerosPourEtablissement(Long etablissementId) {
+        return salleRepository.findDistinctConcoursNumerosByEtablissementId(etablissementId);
     }
 
     private SalleResponse toSalleResponse(Salle s) {
-        return new SalleResponse(s.getId(), s.getNomSalle(), s.getNombrePlaces(), s.getConcoursId());
+        return new SalleResponse(s.getIdSalle(), s.getNomSalle(), s.getNombrePlaces(), s.getNumeroConcours());
     }
 
     private SalleAvecLieuxResponse toSalleAvecLieux(Salle s) {
         Etablissement e = s.getEtablissement();
         Centre c = e.getCentre();
         return new SalleAvecLieuxResponse(
-                s.getId(),
+                s.getIdSalle(),
                 s.getNomSalle(),
                 s.getNombrePlaces(),
-                s.getConcoursId(),
-                e.getId(),
+                s.getNumeroConcours(),
+                e.getIdEtablissement(),
                 e.getNomEtablissement(),
-                c.getId(),
+                c.getIdCentre(),
                 c.getNomCentre());
     }
 }

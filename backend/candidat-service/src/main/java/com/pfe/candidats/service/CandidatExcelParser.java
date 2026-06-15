@@ -19,11 +19,14 @@ import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.ss.usermodel.WorkbookFactory;
 
 /**
- * Lit un fichier .xlsx : première ligne = en-têtes (reconnus de façon souple) ou ordre fixe colonnes A–J.
+ * Lit un fichier .xlsx : détecte la ligne d'en-têtes (titres en haut du fichier acceptés)
+ * ou, à défaut, ordre fixe colonnes A–J.
  */
 final class CandidatExcelParser {
 
     private static final DataFormatter DATA_FORMATTER = new DataFormatter();
+    /** Nombre max de lignes parcourues pour trouver la ligne d'en-têtes. */
+    private static final int MAX_HEADER_SCAN_ROWS = 100;
 
     private CandidatExcelParser() {}
 
@@ -34,18 +37,23 @@ final class CandidatExcelParser {
             if (sheet == null) {
                 return out;
             }
-            Row first = sheet.getRow(0);
+            int headerRowIdx = findHeaderRowIndex(sheet);
             ParsedSheet layout;
-            if (first != null && looksLikeHeaderRow(first)) {
-                layout = new ParsedSheet(true, buildHeaderMap(first));
+            int start;
+            if (headerRowIdx >= 0) {
+                layout = new ParsedSheet(true, buildHeaderMap(sheet.getRow(headerRowIdx)));
+                start = headerRowIdx + 1;
             } else {
                 layout = new ParsedSheet(false, fixedColumnMap());
+                start = 0;
             }
-            int start = layout.hasHeader() ? 1 : 0;
             int last = sheet.getLastRowNum();
             for (int r = start; r <= last; r++) {
                 int rowOneBased = r + 1;
                 Row row = sheet.getRow(r);
+                if (row != null && looksLikeHeaderRow(row)) {
+                    continue;
+                }
                 Optional<ParsedRow> data = readDataRow(row, layout);
                 if (data.isEmpty()) {
                     continue;
@@ -54,6 +62,18 @@ final class CandidatExcelParser {
             }
         }
         return out;
+    }
+
+    /** Cherche la première ligne contenant des libellés de colonnes (CIN, e-mail, etc.). */
+    private static int findHeaderRowIndex(Sheet sheet) {
+        int last = Math.min(sheet.getLastRowNum(), MAX_HEADER_SCAN_ROWS);
+        for (int r = 0; r <= last; r++) {
+            Row row = sheet.getRow(r);
+            if (row != null && looksLikeHeaderRow(row)) {
+                return r;
+            }
+        }
+        return -1;
     }
 
     record SheetRow(int rowNumber, ParsedRow data) {}
@@ -70,7 +90,8 @@ final class CandidatExcelParser {
             String email,
             String specialite,
             String numeroInscription,
-            String nomConcours) {}
+            String nomConcours,
+            String numeroConcours) {}
 
     private static Optional<ParsedRow> readDataRow(Row row, ParsedSheet sheet) {
         if (row == null) {
@@ -89,8 +110,9 @@ final class CandidatExcelParser {
         String specialite = cell(row, "specialite", sheet).trim();
         String numIns = cell(row, "numeroinscription", sheet).trim();
         String nomConcours = cell(row, "nomconcours", sheet).trim();
+        String numeroConcours = cell(row, "numeroconcours", sheet).trim();
         return Optional.of(new ParsedRow(
-                nom, prenom, cin, tel, ville, ageStr, email, specialite, numIns, nomConcours));
+                nom, prenom, cin, tel, ville, ageStr, email, specialite, numIns, nomConcours, numeroConcours));
     }
 
     private static String cell(Row row, String key, ParsedSheet sheet) {
@@ -151,6 +173,20 @@ final class CandidatExcelParser {
                 "ninscription",
                 "codeinscription");
         putFirst(byKey, "nomconcours", raw, "nomconcours", "concours", "examen");
+        // Numéro de concours (clé métier, ex. « CSP-2025 »). On accepte aussi les libellés « ID concours ».
+        putFirst(
+                byKey,
+                "numeroconcours",
+                raw,
+                "numeroconcours",
+                "numconcours",
+                "nconcours",
+                "noconcours",
+                "codeconcours",
+                "concoursid",
+                "idconcours",
+                "concourscode",
+                "referenceconcours");
         return byKey;
     }
 
@@ -176,6 +212,7 @@ final class CandidatExcelParser {
         m.put("specialite", 7);
         m.put("numeroinscription", 8);
         m.put("nomconcours", 9);
+        m.put("numeroconcours", 10);
         return Map.copyOf(m);
     }
 

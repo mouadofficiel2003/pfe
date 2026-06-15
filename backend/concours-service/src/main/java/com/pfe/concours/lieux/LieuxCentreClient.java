@@ -9,7 +9,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.server.ResponseStatusException;
 
 /**
- * Vérifie auprès de lieux-service qu'un centre existe (option B — cohérence des {@code centreId}).
+ * Vérifie auprès de lieux-service qu'un centre existe (cohérence des {@code id_centre}).
  */
 @Component
 public class LieuxCentreClient {
@@ -23,11 +23,11 @@ public class LieuxCentreClient {
     /**
      * Appelle {@code GET /api/centres/{id}} sur lieux-service. Nécessite le même JWT que la requête utilisateur.
      *
-     * @param centreId identifiant métier du centre dans lieux-service
+     * @param idCentre identifiant {@code lieux.centre.id_centre}
      * @param authorizationHeader valeur complète de l'en-tête {@code Authorization} (ex. {@code Bearer …})
      */
-    public void assertCentreExists(Long centreId, String authorizationHeader) {
-        if (centreId == null) {
+    public void assertCentreExists(Long idCentre, String authorizationHeader) {
+        if (idCentre == null) {
             return;
         }
         if (authorizationHeader == null || authorizationHeader.isBlank()) {
@@ -43,7 +43,7 @@ public class LieuxCentreClient {
         try {
             lieuxRestClient
                     .get()
-                    .uri("/api/centres/{id}", centreId)
+                    .uri("/api/centres/{id}", idCentre)
                     .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
                     .retrieve()
                     .onStatus(
@@ -52,7 +52,7 @@ public class LieuxCentreClient {
                                 throw new ResponseStatusException(
                                         HttpStatus.BAD_REQUEST,
                                         "Le centre d'identifiant "
-                                                + centreId
+                                                + idCentre
                                                 + " n'existe pas dans le service lieux");
                             })
                     .onStatus(

@@ -46,7 +46,7 @@ class LieuxJpaRepositoriesIT {
         Salle salle = new Salle();
         salle.setNomSalle("Salle 1");
         salle.setNombrePlaces(40);
-        salle.setConcoursId(99L);
+        salle.setNumeroConcours("C-99");
         salle.setCreeLe(now);
         salle.setModifieLe(now);
         etab.getSalles().add(salle);
@@ -54,27 +54,27 @@ class LieuxJpaRepositoriesIT {
         etab.lierSalles();
 
         Centre savedCentre = centreRepository.save(centre);
-        assertThat(savedCentre.getId()).isNotNull();
+        assertThat(savedCentre.getIdCentre()).isNotNull();
         assertThat(savedCentre.getEtablissements()).hasSize(1);
 
-        Long etabId = savedCentre.getEtablissements().get(0).getId();
+        Long etabId = savedCentre.getEtablissements().get(0).getIdEtablissement();
         assertThat(etabId).isNotNull();
 
-        Optional<Salle> loadedSalle =
-                salleRepository.findByIdWithEtablissementAndCentre(
-                        savedCentre.getEtablissements().get(0).getSalles().get(0).getId());
+        Optional<Salle> loadedSalle = salleRepository.findByIdWithEtablissementAndCentre(
+                savedCentre.getEtablissements().get(0).getSalles().get(0).getIdSalle());
         assertThat(loadedSalle).isPresent();
         assertThat(loadedSalle.get().getNomSalle()).isEqualTo("Salle 1");
         assertThat(loadedSalle.get().getNombrePlaces()).isEqualTo(40);
-        assertThat(loadedSalle.get().getConcoursId()).isEqualTo(99L);
+        assertThat(loadedSalle.get().getNumeroConcours()).isEqualTo("C-99");
         assertThat(loadedSalle.get().getEtablissement().getNomEtablissement()).isEqualTo("Lycée Alpha");
         assertThat(loadedSalle.get().getEtablissement().getCentre().getNomCentre()).isEqualTo("Centre Rabat");
 
-        assertThat(salleRepository.findByConcoursIdOrderByNomSalleAsc(99L)).hasSize(1);
-        assertThat(salleRepository.findDistinctConcoursIdsByEtablissementId(etabId)).containsExactly(99L);
-        assertThat(salleRepository.findDistinctConcoursIdsByCentreId(savedCentre.getId())).containsExactly(99L);
+        assertThat(salleRepository.findByNumeroConcoursOrderByNomSalleAsc("C-99")).hasSize(1);
+        assertThat(salleRepository.findDistinctConcoursNumerosByEtablissementId(etabId)).containsExactly("C-99");
+        assertThat(salleRepository.findDistinctConcoursNumerosByCentreId(savedCentre.getIdCentre()))
+                .containsExactly("C-99");
 
-        centreRepository.deleteById(savedCentre.getId());
+        centreRepository.deleteById(savedCentre.getIdCentre());
 
         assertThat(centreRepository.findAll()).isEmpty();
         assertThat(etablissementRepository.findAll()).isEmpty();
@@ -117,7 +117,7 @@ class LieuxJpaRepositoriesIT {
 
         Centre saved = centreRepository.saveAndFlush(centre);
 
-        var loaded = etablissementRepository.findByCentreIdWithSalles(saved.getId());
+        var loaded = etablissementRepository.findByCentreIdWithSalles(saved.getIdCentre());
         assertThat(loaded).extracting(Etablissement::getNomEtablissement).containsExactly("Avec salle", "Sans salle");
         Etablissement etabSansSalle = loaded.stream()
                 .filter(e -> "Sans salle".equals(e.getNomEtablissement()))

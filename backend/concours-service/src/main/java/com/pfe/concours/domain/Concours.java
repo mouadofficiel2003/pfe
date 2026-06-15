@@ -3,8 +3,6 @@ package com.pfe.concours.domain;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
@@ -17,14 +15,11 @@ import java.util.List;
 public class Concours {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "numero_concours", nullable = false, length = 80)
+    private String numeroConcours;
 
     @Column(name = "nom_concours", nullable = false, length = 200)
     private String nomConcours;
-
-    @Column(name = "numero_concours", length = 80, unique = true)
-    private String numeroConcours;
 
     @Column(name = "date_heure_examen", nullable = false)
     private Instant dateHeureExamen;
@@ -44,12 +39,12 @@ public class Concours {
         }
     }
 
-    public Long getId() {
-        return id;
+    public String getNumeroConcours() {
+        return numeroConcours;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setNumeroConcours(String numeroConcours) {
+        this.numeroConcours = numeroConcours;
     }
 
     public String getNomConcours() {
@@ -58,14 +53,6 @@ public class Concours {
 
     public void setNomConcours(String nomConcours) {
         this.nomConcours = nomConcours;
-    }
-
-    public String getNumeroConcours() {
-        return numeroConcours;
-    }
-
-    public void setNumeroConcours(String numeroConcours) {
-        this.numeroConcours = numeroConcours;
     }
 
     public Instant getDateHeureExamen() {

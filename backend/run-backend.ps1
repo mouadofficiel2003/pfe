@@ -1,4 +1,4 @@
-# Lance auth-service (8081), candidat-service (8082), concours-service (8083) et lieux-service (8084) dans des fenetres PowerShell separees.
+# Lance api-gateway (8080), auth-service (8081), candidat-service (8082), concours-service (8083), lieux-service (8084) et repartition-service (8085) dans des fenetres PowerShell separees.
 # Necessite un JDK 17+ : soit JAVA_HOME pointe vers le JDK, soit java est dans le PATH.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
@@ -37,16 +37,28 @@ $javaHomeEsc = $env:JAVA_HOME.Replace("'", "''")
 $rootEsc = $PSScriptRoot.Replace("'", "''")
 
 if (Test-Path $mvnwCmd) {
+    $runGateway = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl api-gateway spring-boot:run"
     $runAuth = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl auth-service spring-boot:run"
     $runCandidat = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl candidat-service spring-boot:run"
     $runConcours = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl concours-service spring-boot:run"
     $runLieux = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl lieux-service spring-boot:run"
+    $runRepartition = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl repartition-service spring-boot:run"
 } else {
+    $runGateway = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl api-gateway spring-boot:run"
     $runAuth = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl auth-service spring-boot:run"
     $runCandidat = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl candidat-service spring-boot:run"
     $runConcours = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl concours-service spring-boot:run"
     $runLieux = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl lieux-service spring-boot:run"
+    $runRepartition = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl repartition-service spring-boot:run"
 }
+
+Write-Host "Demarrage api-gateway sur http://localhost:8080 (nouvelle fenetre)..." -ForegroundColor Cyan
+Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
+    "-NoExit",
+    "-NoLogo",
+    "-Command",
+    $runGateway
+)
 
 Write-Host "Demarrage auth-service sur http://localhost:8081 (nouvelle fenetre)..." -ForegroundColor Cyan
 Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
@@ -80,4 +92,12 @@ Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
     $runLieux
 )
 
-Write-Host "Les quatre services demarrent. Fermez chaque fenetre pour arreter le service correspondant." -ForegroundColor Green
+Write-Host "Demarrage repartition-service sur http://localhost:8085 (nouvelle fenetre)..." -ForegroundColor Cyan
+Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
+    "-NoExit",
+    "-NoLogo",
+    "-Command",
+    $runRepartition
+)
+
+Write-Host "La gateway et les cinq services demarrent. Fermez chaque fenetre pour arreter le service correspondant." -ForegroundColor Green

@@ -5,6 +5,7 @@ import CandidatsPage from "./pages/CandidatsPage";
 import ConcoursPage from "./pages/ConcoursPage";
 import LieuxPage from "./pages/LieuxPage";
 import LoginPage from "./pages/LoginPage";
+import RepartitionPage from "./pages/RepartitionPage";
 import RootRedirect from "./pages/RootRedirect";
 
 export default function App() {
@@ -35,6 +36,14 @@ export default function App() {
             element={
               <RequireAuth>
                 <LieuxPage />
+              </RequireAuth>
+            }
+          />
+          <Route
+            path="/repartition"
+            element={
+              <RequireAuth>
+                <RepartitionPage />
               </RequireAuth>
             }
           />

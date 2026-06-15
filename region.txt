@@ -1,0 +1,94 @@
+les regions du maroc et leur villes :
+
+Region Tanger-Tétouan-Al Hoceïma:
+-Tanger
+-Asilah
+-M'diq
+-Fnideq
+-Tétouan
+-Fahs-Anjra
+-Larache
+-Al Hoceïma
+-Chefchaouen
+-Ouezzane
+Region Oujda-Nador:
+-Oujda
+-Angad
+-Nador
+-Driouch
+-Jerada
+-Berkane
+-Taourirt
+-Guercif
+-Figuig
+Region Fès-Meknès:
+-Fès
+-Meknès
+-Taza
+-El Hajeb
+-Ifrane
+-Moulay Yaâcoub
+-Séfrou
+-Boulemane
+-Taounate
+Region Rabat-Salé-Kénitra:
+-Rabat
+-Salé
+-Skhirate
+-Témara
+-Kénitra
+-Khémisset
+-Sidi Kacem
+-Sidi Slimane
+Region Béni Mellal-Khénifra:
+-Béni-Mellal
+-Azilal
+-Fquih Ben Salah
+-Khénifra
+-Khouribga
+Region Casablanca-Settat:
+-Casablanca
+-Mohammédia
+-Jadida
+-Nouaceur
+-Médiouna
+-Benslimane
+-Berrechid
+-Settat
+-Sidi Bennour
+Region Marrakech-Safi:
+-Marrakech
+-Chichaoua
+-Al Haouz
+-El Kelaâ des Sraghna
+-Essaouira
+-Rehamna
+-Safi
+-Youssoufia
+Region Drâa-Tafilalet:
+-Errachidia
+-Ouarzazate
+-Midelt
+-Tinghir
+-Zagora
+Region Souss-Massa:
+-Agadir 
+-Inezgane
+-Chtouka-Aït Baha
+-Taroudant
+-Tata
+Region Guelmim-Oued Noun:
+-Guelmim
+-Assa-Zag
+-Tan-Tan
+-Sidi Ifni
+Region Laâyoune-Sakia El Hamra:
+-Laâyoune
+-Boujdour
+-Tarfaya
+-Es-Semara
+Region Dakhla-Oued Ed-Dahab:
+-Oued Ed-Dahab
+-Aousserd
+
+

@@ -9,32 +9,31 @@ import org.springframework.data.repository.query.Param;
 
 public interface EtablissementRepository extends JpaRepository<Etablissement, Long> {
 
-    @Query("SELECT COUNT(e) FROM Etablissement e WHERE e.centre.id = :centreId")
+    @Query("SELECT COUNT(e) FROM Etablissement e WHERE e.centre.idCentre = :centreId")
     long countByCentreId(@Param("centreId") Long centreId);
-
-    List<Etablissement> findByCentreIdOrderByNomEtablissementAsc(Long centreId);
 
     @Query(
             """
             SELECT DISTINCT e FROM Etablissement e
             LEFT JOIN FETCH e.salles
-            WHERE e.centre.id = :centreId
+            WHERE e.centre.idCentre = :centreId
             ORDER BY e.nomEtablissement ASC
             """)
     List<Etablissement> findByCentreIdWithSalles(@Param("centreId") Long centreId);
 
-    Optional<Etablissement> findByIdAndCentreId(Long id, Long centreId);
+    Optional<Etablissement> findByIdEtablissementAndCentre_IdCentre(Long idEtablissement, Long centreId);
 
     @Query(
             """
             SELECT DISTINCT e FROM Etablissement e
             LEFT JOIN FETCH e.salles s
-            WHERE e.id = :id
+            WHERE e.idEtablissement = :id
             ORDER BY s.nomSalle ASC
             """)
     Optional<Etablissement> findByIdWithSalles(@Param("id") Long id);
 
-    boolean existsByCentreIdAndNomEtablissementIgnoreCase(Long centreId, String nom);
+    boolean existsByCentre_IdCentreAndNomEtablissementIgnoreCase(Long centreId, String nom);
 
-    boolean existsByCentreIdAndNomEtablissementIgnoreCaseAndIdNot(Long centreId, String nom, Long id);
+    boolean existsByCentre_IdCentreAndNomEtablissementIgnoreCaseAndIdEtablissementNot(
+            Long centreId, String nom, Long idEtablissement);
 }

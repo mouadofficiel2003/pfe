@@ -21,11 +21,7 @@ public class ConcoursRemoteClient {
         this.concoursRestClient = concoursRestClient;
     }
 
-    /**
-     * GET /api/concours/{id}. Retourne le concours ou lève une {@link ResponseStatusException} si absent / service
-     * indisponible.
-     */
-    /** GET /api/concours — catalogue pour résolution nom → id à l'import. */
+    /** GET /api/concours — catalogue pour résolution nom → numéro à l'import. */
     public List<ConcoursHeadJson> listConcours(String authorizationHeader) {
         requireBearer(authorizationHeader);
         try {
@@ -57,12 +53,13 @@ public class ConcoursRemoteClient {
         }
     }
 
-    public ConcoursHeadJson fetchConcours(Long concoursId, String authorizationHeader) {
+    /** GET /api/concours/{numeroConcours}. Retourne le concours ou lève une erreur si absent. */
+    public ConcoursHeadJson fetchConcours(String numeroConcours, String authorizationHeader) {
         requireBearer(authorizationHeader);
         try {
             return concoursRestClient
                     .get()
-                    .uri("/api/concours/{id}", concoursId)
+                    .uri("/api/concours/{numeroConcours}", numeroConcours)
                     .header(HttpHeaders.AUTHORIZATION, authorizationHeader)
                     .retrieve()
                     .onStatus(
@@ -70,7 +67,7 @@ public class ConcoursRemoteClient {
                             (request, response) -> {
                                 throw new ResponseStatusException(
                                         HttpStatus.BAD_REQUEST,
-                                        "Le concours d'identifiant " + concoursId + " n'existe pas");
+                                        "Le concours « " + numeroConcours + " » n'existe pas");
                             })
                     .onStatus(
                             status -> status.value() == 401 || status.value() == 403,

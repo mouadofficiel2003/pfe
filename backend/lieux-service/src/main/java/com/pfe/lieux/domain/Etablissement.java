@@ -21,10 +21,11 @@ public class Etablissement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
+    @Column(name = "id_etablissement")
+    private Long idEtablissement;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "centre_id", nullable = false)
+    @JoinColumn(name = "centre_id", referencedColumnName = "id_centre", nullable = false)
     private Centre centre;
 
     @Column(name = "nom_etablissement", nullable = false, length = 200)
@@ -45,12 +46,12 @@ public class Etablissement {
         }
     }
 
-    public Long getId() {
-        return id;
+    public Long getIdEtablissement() {
+        return idEtablissement;
     }
 
-    public void setId(Long id) {
-        this.id = id;
+    public void setIdEtablissement(Long idEtablissement) {
+        this.idEtablissement = idEtablissement;
     }
 
     public Centre getCentre() {

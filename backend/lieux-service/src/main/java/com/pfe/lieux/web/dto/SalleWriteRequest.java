@@ -9,4 +9,4 @@ import jakarta.validation.constraints.Size;
 public record SalleWriteRequest(
         @NotBlank @Size(max = 200) String nomSalle,
         @NotNull @Min(1) @Max(1_000_000) Integer nombrePlaces,
-        Long concoursId) {}
+        @Size(max = 80) String numeroConcours) {}

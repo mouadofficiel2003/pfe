@@ -1,0 +1,6 @@
+# Copier vers application-local.properties (non versionne) et adapter si besoin.
+# Surcharge les URI des services en aval (utile en conteneur / autre hote).
+# AUTH_SERVICE_URI=http://localhost:8081
+# CANDIDAT_SERVICE_URI=http://localhost:8082
+# CONCOURS_SERVICE_URI=http://localhost:8083
+# LIEUX_SERVICE_URI=http://localhost:8084

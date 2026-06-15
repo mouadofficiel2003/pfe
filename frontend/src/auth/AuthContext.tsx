@@ -11,6 +11,7 @@ import type { LoginResponse, RoleUtilisateur } from "./types";
 import { fetchMe, getStoredToken, loginRequest, setStoredToken } from "./api";
 
 type AuthState =
+  | { status: "loading" }
   | { status: "anonymous" }
   | { status: "authenticated"; user: LoginResponse };
 
@@ -23,15 +24,18 @@ type AuthContextValue = {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [state, setState] = useState<AuthState>({ status: "anonymous" });
+  const [state, setState] = useState<AuthState>({ status: "loading" });
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
       const restored = await tryRestoreSession();
-      if (!cancelled && restored) {
-        setState({ status: "authenticated", user: restored });
-      }
+      if (cancelled) return;
+      setState(
+        restored
+          ? { status: "authenticated", user: restored }
+          : { status: "anonymous" },
+      );
     })();
     return () => {
       cancelled = true;
@@ -47,6 +51,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     setStoredToken(null);
     setState({ status: "anonymous" });
+  }, []);
+
+  // Déconnexion automatique si un appel API protégé renvoie 401 (jeton expiré en cours d'usage).
+  useEffect(() => {
+    const onUnauthorized = () => {
+      setStoredToken(null);
+      setState((current) =>
+        current.status === "authenticated" ? { status: "anonymous" } : current,
+      );
+    };
+    window.addEventListener("auth:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("auth:unauthorized", onUnauthorized);
   }, []);
 
   const value = useMemo(() => ({ state, login, logout }), [state, login, logout]);

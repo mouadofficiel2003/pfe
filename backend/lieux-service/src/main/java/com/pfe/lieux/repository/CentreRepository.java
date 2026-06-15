@@ -12,5 +12,5 @@ public interface CentreRepository extends JpaRepository<Centre, Long> {
 
     boolean existsByNomCentreIgnoreCase(String nomCentre);
 
-    boolean existsByNomCentreIgnoreCaseAndIdNot(String nomCentre, Long id);
+    boolean existsByNomCentreIgnoreCaseAndIdCentreNot(String nomCentre, Long idCentre);
 }

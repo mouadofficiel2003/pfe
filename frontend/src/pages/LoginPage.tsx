@@ -1,9 +1,14 @@
 import { FormEvent, useState, type CSSProperties } from "react";
-import { Navigate } from "react-router-dom";
+import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+
+type LocationState = { from?: string } | null;
 
 export default function LoginPage() {
   const { state, login } = useAuth();
+  const location = useLocation();
+  const from = (location.state as LocationState)?.from;
+  const redirectTo = from && from !== "/login" ? from : "/candidats";
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -23,7 +28,7 @@ export default function LoginPage() {
   }
 
   if (state.status === "authenticated") {
-    return <Navigate to="/candidats" replace />;
+    return <Navigate to={redirectTo} replace />;
   }
 
   return (

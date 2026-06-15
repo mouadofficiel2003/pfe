@@ -2,4 +2,4 @@
 spring.datasource.url=jdbc:postgresql://localhost:5432/data_lieux
 spring.datasource.username=postgres
 spring.datasource.password=postgres
-auth.jwt.secret=votre-secret-32-octets-minimum-pour-jwt
+auth.jwt.secret=pfe-dev-jwt-secret-key-change-me-min-32b!!

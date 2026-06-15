@@ -10,6 +10,6 @@ import java.util.List;
 
 public record ConcoursWriteRequest(
         @NotBlank @Size(max = 200) String nomConcours,
-        @Size(max = 80) String numeroConcours,
+        @NotBlank @Size(max = 80) String numeroConcours,
         @NotNull Instant dateHeureExamen,
         @NotEmpty @Valid List<CentreAffectationRequest> centres) {}

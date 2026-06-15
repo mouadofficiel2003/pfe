@@ -8,15 +8,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface ConcoursRepository extends JpaRepository<Concours, Long> {
-
-    boolean existsByNumeroConcoursAndIdNot(String numeroConcours, Long id);
-
-    boolean existsByNumeroConcours(String numeroConcours);
+public interface ConcoursRepository extends JpaRepository<Concours, String> {
 
     @EntityGraph(attributePaths = "affectationsCentres")
-    @Query("SELECT c FROM Concours c WHERE c.id = :id")
-    Optional<Concours> findByIdWithAffectations(@Param("id") Long id);
+    @Query("SELECT c FROM Concours c WHERE c.numeroConcours = :numeroConcours")
+    Optional<Concours> findByIdWithAffectations(@Param("numeroConcours") String numeroConcours);
 
     @EntityGraph(attributePaths = "affectationsCentres")
     @Query("SELECT c FROM Concours c ORDER BY c.dateHeureExamen DESC")
@@ -26,8 +22,8 @@ public interface ConcoursRepository extends JpaRepository<Concours, Long> {
             """
             SELECT DISTINCT c FROM Concours c
             JOIN c.affectationsCentres a
-            WHERE a.centreId = :centreId
+            WHERE a.idCentre = :idCentre
             ORDER BY c.nomConcours
             """)
-    List<Concours> findDistinctByAffectationCentreId(@Param("centreId") Long centreId);
+    List<Concours> findDistinctByAffectationIdCentre(@Param("idCentre") Long idCentre);
 }

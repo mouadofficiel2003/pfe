@@ -23,15 +23,15 @@ import { useAuth } from "../auth/AuthContext";
 
 type ModalKind = "centre" | "etablissement" | "salle" | null;
 
-function concoursLabel(id: number | null, concours: ConcoursDto[]): string {
-  if (id == null) return "—";
-  const c = concours.find((x) => x.id === id);
-  return c ? `${c.nomConcours} (#${id})` : `#${id}`;
+function concoursLabel(numero: string | null, concours: ConcoursDto[]): string {
+  if (numero == null || numero === "") return "—";
+  const c = concours.find((x) => x.numeroConcours === numero);
+  return c ? `${c.nomConcours} (${numero})` : numero;
 }
 
-function formatConcoursIds(ids: number[], concours: ConcoursDto[]): string {
-  if (!ids.length) return "—";
-  return ids.map((id) => concoursLabel(id, concours)).join(", ");
+function formatConcoursNumeros(numeros: string[], concours: ConcoursDto[]): string {
+  if (!numeros.length) return "—";
+  return numeros.map((num) => concoursLabel(num, concours)).join(", ");
 }
 
 export default function LieuxPage() {
@@ -116,7 +116,7 @@ export default function LieuxPage() {
         setConcoursList([]);
       }
       if (list.length > 0) {
-        await loadDetail(list[0].id);
+        await loadDetail(list[0].idCentre);
       }
     })();
   }, [loadCentres, loadDetail]);
@@ -136,10 +136,10 @@ export default function LieuxPage() {
   async function refreshAll(keepId?: number | null) {
     const list = await loadCentres();
     const id = keepId ?? selectedId;
-    if (id != null && list.some((c) => c.id === id)) {
+    if (id != null && list.some((c) => c.idCentre === id)) {
       await loadDetail(id);
     } else if (list.length > 0) {
-      await loadDetail(list[0].id);
+      await loadDetail(list[0].idCentre);
     } else {
       setSelectedId(null);
       setDetail(null);
@@ -169,7 +169,7 @@ export default function LieuxPage() {
   function openEditCentre() {
     if (!detail) return;
     setActionError(null);
-    setEditingCentreId(detail.id);
+    setEditingCentreId(detail.idCentre);
     setCentreNom(detail.nomCentre);
     setModal("centre");
   }
@@ -178,7 +178,7 @@ export default function LieuxPage() {
     if (!detail) return;
     setActionError(null);
     setEditingEtab(null);
-    setEtabCentreId(detail.id);
+    setEtabCentreId(detail.idCentre);
     setEtabNom("");
     setModal("etablissement");
   }
@@ -194,7 +194,7 @@ export default function LieuxPage() {
   function openCreateSalle(etab: EtablissementDetailDto) {
     setActionError(null);
     setEditingSalle(null);
-    setSalleEtabId(etab.id);
+    setSalleEtabId(etab.idEtablissement);
     setSalleNom("");
     setSallePlaces("30");
     setSalleConcoursId("");
@@ -207,7 +207,7 @@ export default function LieuxPage() {
     setSalleEtabId(null);
     setSalleNom(salle.nomSalle);
     setSallePlaces(String(salle.nombrePlaces));
-    setSalleConcoursId(salle.concoursId != null ? String(salle.concoursId) : "");
+    setSalleConcoursId(salle.numeroConcours ?? "");
     setModal("salle");
   }
 
@@ -225,7 +225,7 @@ export default function LieuxPage() {
         const created = await createCentre({ nomCentre: nom });
         closeModal();
         await loadCentres();
-        await loadDetail(created.id);
+        await loadDetail(created.idCentre);
       } else {
         await updateCentre(editingCentreId, { nomCentre: nom });
         closeModal();
@@ -251,18 +251,18 @@ export default function LieuxPage() {
       setActionError("Indiquez le nom de l’établissement.");
       return;
     }
+    if (editingEtab == null && etabCentreId == null) {
+      setActionError("Centre non sélectionné.");
+      return;
+    }
     setSaving(true);
     setActionError(null);
     try {
       const centreId = editingEtab == null ? etabCentreId : selectedId;
       if (editingEtab == null) {
-        if (etabCentreId == null) {
-          setActionError("Centre non sélectionné.");
-          return;
-        }
-        await createEtablissement(etabCentreId, { nomEtablissement: nom });
+        await createEtablissement(etabCentreId!, { nomEtablissement: nom });
       } else {
-        await updateEtablissement(editingEtab.id, { nomEtablissement: nom });
+        await updateEtablissement(editingEtab.idEtablissement, { nomEtablissement: nom });
       }
       closeModal();
       if (centreId != null) {
@@ -296,20 +296,19 @@ export default function LieuxPage() {
       setActionError("Le nombre de places doit être un entier ≥ 1.");
       return;
     }
-    const concoursId = salleConcoursId.trim() ? Number(salleConcoursId) : null;
-    if (salleConcoursId.trim() && Number.isNaN(concoursId)) {
-      setActionError("Identifiant de concours invalide.");
+    const numeroConcours = salleConcoursId.trim() || null;
+    if (editingSalle == null && salleEtabId == null) {
+      setActionError("Établissement non sélectionné.");
       return;
     }
     setSaving(true);
     setActionError(null);
     try {
-      const payload = { nomSalle: nom, nombrePlaces: places, concoursId };
+      const payload = { nomSalle: nom, nombrePlaces: places, numeroConcours };
       if (editingSalle == null) {
-        if (salleEtabId == null) return;
-        await createSalle(salleEtabId, payload);
+        await createSalle(salleEtabId!, payload);
       } else {
-        await updateSalle(editingSalle.id, payload);
+        await updateSalle(editingSalle.idSalle, payload);
       }
       closeModal();
       await refreshAll(selectedId);
@@ -339,7 +338,7 @@ export default function LieuxPage() {
     if (!window.confirm(`Supprimer le centre « ${detail.nomCentre} » et tout son contenu ?`)) return;
     setActionError(null);
     try {
-      await deleteCentre(detail.id);
+      await deleteCentre(detail.idCentre);
       setSelectedId(null);
       setDetail(null);
       await refreshAll(null);
@@ -356,7 +355,7 @@ export default function LieuxPage() {
     if (!window.confirm(`Supprimer l’établissement « ${etab.nomEtablissement} » et ses salles ?`)) return;
     setActionError(null);
     try {
-      await deleteEtablissement(etab.id);
+      await deleteEtablissement(etab.idEtablissement);
       await refreshAll(selectedId);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
@@ -371,7 +370,7 @@ export default function LieuxPage() {
     if (!window.confirm(`Supprimer la salle « ${salle.nomSalle} » ?`)) return;
     setActionError(null);
     try {
-      await deleteSalle(salle.id);
+      await deleteSalle(salle.idSalle);
       await refreshAll(selectedId);
     } catch (err) {
       if (axios.isAxiosError(err) && err.response?.status === 403) {
@@ -397,6 +396,9 @@ export default function LieuxPage() {
               </Link>
               <Link style={navLinkActive} to="/lieux">
                 Lieux
+              </Link>
+              <Link style={navLink} to="/repartition">
+                Répartition
               </Link>
             </nav>
           </div>
@@ -446,16 +448,16 @@ export default function LieuxPage() {
             {!loadingList && centres && centres.length > 0 ? (
               <ul style={centreList}>
                 {centres.map((c) => (
-                  <li key={c.id}>
+                  <li key={c.idCentre}>
                     <button
                       type="button"
-                      style={selectedId === c.id ? centreItemActive : centreItem}
-                      onClick={() => selectCentre(c.id)}
+                      style={selectedId === c.idCentre ? centreItemActive : centreItem}
+                      onClick={() => selectCentre(c.idCentre)}
                     >
                       <span style={centreItemName}>{c.nomCentre}</span>
                       <span style={centreItemMeta}>
                         {c.nombreEtablissements} établ.
-                        {c.concoursIds.length ? ` · ${c.concoursIds.length} concours` : ""}
+                        {c.concoursNumeros.length ? ` · ${c.concoursNumeros.length} concours` : ""}
                       </span>
                     </button>
                   </li>
@@ -475,7 +477,7 @@ export default function LieuxPage() {
                   <div>
                     <h2 style={h2Detail}>{detail.nomCentre}</h2>
                     <p style={detailMeta}>
-                      ID {detail.id} · Concours liés : {formatConcoursIds(detail.concoursIds, concoursList)}
+                      ID {detail.idCentre} · Concours liés : {formatConcoursNumeros(detail.concoursNumeros, concoursList)}
                     </p>
                   </div>
                   {!readOnly ? (
@@ -498,12 +500,12 @@ export default function LieuxPage() {
                 ) : null}
 
                 {detail.etablissements.map((etab) => (
-                  <article key={etab.id} style={etabCard}>
+                  <article key={etab.idEtablissement} style={etabCard}>
                     <div style={etabHeader}>
                       <div>
                         <h3 style={h3}>{etab.nomEtablissement}</h3>
                         <span style={etabMeta}>
-                          ID {etab.id} · Concours : {formatConcoursIds(etab.concoursIds, concoursList)}
+                          ID {etab.idEtablissement} · Concours : {formatConcoursNumeros(etab.concoursNumeros, concoursList)}
                         </span>
                       </div>
                       {!readOnly ? (
@@ -535,10 +537,10 @@ export default function LieuxPage() {
                           </thead>
                           <tbody>
                             {etab.salles.map((s) => (
-                              <tr key={s.id}>
+                              <tr key={s.idSalle}>
                                 <td style={td}>{s.nomSalle}</td>
                                 <td style={td}>{s.nombrePlaces}</td>
-                                <td style={td}>{concoursLabel(s.concoursId, concoursList)}</td>
+                                <td style={td}>{concoursLabel(s.numeroConcours, concoursList)}</td>
                                 {!readOnly ? (
                                   <td style={tdActions}>
                                     <button type="button" style={btnLink} onClick={() => openEditSalle(s)}>
@@ -673,9 +675,9 @@ export default function LieuxPage() {
                   >
                     <option value="">— Aucun —</option>
                     {concoursList.map((c) => (
-                      <option key={c.id} value={String(c.id)}>
+                      <option key={c.numeroConcours} value={c.numeroConcours}>
                         {c.nomConcours}
-                        {c.numeroConcours ? ` (${c.numeroConcours})` : ""} — #{c.id}
+                        {c.numeroConcours ? ` (${c.numeroConcours})` : ""}
                       </option>
                     ))}
                   </select>

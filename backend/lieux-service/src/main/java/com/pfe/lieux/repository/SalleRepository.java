@@ -9,30 +9,31 @@ import org.springframework.data.repository.query.Param;
 
 public interface SalleRepository extends JpaRepository<Salle, Long> {
 
-    Optional<Salle> findByIdAndEtablissementId(Long id, Long etablissementId);
+    Optional<Salle> findByIdSalleAndEtablissement_IdEtablissement(Long idSalle, Long etablissementId);
 
-    @Query("SELECT s FROM Salle s JOIN FETCH s.etablissement e JOIN FETCH e.centre WHERE s.id = :id")
+    @Query("SELECT s FROM Salle s JOIN FETCH s.etablissement e JOIN FETCH e.centre WHERE s.idSalle = :id")
     Optional<Salle> findByIdWithEtablissementAndCentre(@Param("id") Long id);
 
-    List<Salle> findByConcoursIdOrderByNomSalleAsc(Long concoursId);
+    List<Salle> findByNumeroConcoursOrderByNomSalleAsc(String numeroConcours);
 
     @Query(
             """
-            SELECT DISTINCT s.concoursId FROM Salle s
-            WHERE s.etablissement.id = :etablissementId AND s.concoursId IS NOT NULL
-            ORDER BY s.concoursId
+            SELECT DISTINCT s.numeroConcours FROM Salle s
+            WHERE s.etablissement.idEtablissement = :etablissementId AND s.numeroConcours IS NOT NULL
+            ORDER BY s.numeroConcours
             """)
-    List<Long> findDistinctConcoursIdsByEtablissementId(@Param("etablissementId") Long etablissementId);
+    List<String> findDistinctConcoursNumerosByEtablissementId(@Param("etablissementId") Long etablissementId);
 
     @Query(
             """
-            SELECT DISTINCT s.concoursId FROM Salle s
-            WHERE s.etablissement.centre.id = :centreId AND s.concoursId IS NOT NULL
-            ORDER BY s.concoursId
+            SELECT DISTINCT s.numeroConcours FROM Salle s
+            WHERE s.etablissement.centre.idCentre = :centreId AND s.numeroConcours IS NOT NULL
+            ORDER BY s.numeroConcours
             """)
-    List<Long> findDistinctConcoursIdsByCentreId(@Param("centreId") Long centreId);
+    List<String> findDistinctConcoursNumerosByCentreId(@Param("centreId") Long centreId);
 
-    boolean existsByEtablissementIdAndNomSalleIgnoreCase(Long etablissementId, String nom);
+    boolean existsByEtablissement_IdEtablissementAndNomSalleIgnoreCase(Long etablissementId, String nom);
 
-    boolean existsByEtablissementIdAndNomSalleIgnoreCaseAndIdNot(Long etablissementId, String nom, Long id);
+    boolean existsByEtablissement_IdEtablissementAndNomSalleIgnoreCaseAndIdSalleNot(
+            Long etablissementId, String nom, Long idSalle);
 }

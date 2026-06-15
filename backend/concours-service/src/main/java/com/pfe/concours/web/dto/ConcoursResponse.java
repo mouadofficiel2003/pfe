@@ -4,9 +4,8 @@ import java.time.Instant;
 import java.util.List;
 
 public record ConcoursResponse(
-        Long id,
-        String nomConcours,
         String numeroConcours,
+        String nomConcours,
         Instant dateHeureExamen,
         List<CentreAffectationResponse> centres,
         Instant creeLe,

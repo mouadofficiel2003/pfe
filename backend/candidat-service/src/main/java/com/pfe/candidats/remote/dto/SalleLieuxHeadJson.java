@@ -7,7 +7,7 @@ public record SalleLieuxHeadJson(
         Long id,
         String nomSalle,
         int nombrePlaces,
-        Long concoursId,
+        String numeroConcours,
         Long etablissementId,
         String nomEtablissement,
         Long centreId,

@@ -18,7 +18,7 @@ public record CandidatUpdateRequest(
         @NotBlank @Size(max = 200) String specialite,
         @NotBlank @Size(max = 80) String numeroInscription,
         @NotBlank @Size(max = 200) String nomConcours,
-        Long concoursId,
+        @Size(max = 80) String numeroConcours,
         Long idCentre,
         Long idEtablissement,
         Long idSalle,

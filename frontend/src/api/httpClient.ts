@@ -27,3 +27,14 @@ apiClient.interceptors.request.use((config) => {
   }
   return config;
 });
+
+// Intercepteur global : un 401 (jeton expiré/invalide) déclenche la déconnexion côté AuthContext.
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (axios.isAxiosError(error) && error.response?.status === 401) {
+      window.dispatchEvent(new CustomEvent("auth:unauthorized"));
+    }
+    return Promise.reject(error);
+  },
+);

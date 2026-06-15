@@ -4,14 +4,9 @@ import com.pfe.candidats.domain.Candidat;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface CandidatRepository extends JpaRepository<Candidat, Long> {
+public interface CandidatRepository extends JpaRepository<Candidat, String> {
 
     Optional<Candidat> findByCin(String cin);
 
-    boolean existsByCinAndIdNot(String cin, Long id);
-
-    boolean existsByNumeroInscriptionAndConcoursIdAndIdNot(
-            String numeroInscription, Long concoursId, Long id);
-
-    boolean existsByNumeroInscriptionAndConcoursId(String numeroInscription, Long concoursId);
+    boolean existsByCinAndNumeroInscriptionNot(String cin, String numeroInscription);
 }

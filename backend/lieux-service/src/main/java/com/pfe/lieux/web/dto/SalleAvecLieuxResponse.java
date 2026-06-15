@@ -1,11 +1,11 @@
 package com.pfe.lieux.web.dto;
 
 public record SalleAvecLieuxResponse(
-        Long id,
+        Long idSalle,
         String nomSalle,
         int nombrePlaces,
-        Long concoursId,
-        Long etablissementId,
+        String numeroConcours,
+        Long idEtablissement,
         String nomEtablissement,
-        Long centreId,
+        Long idCentre,
         String nomCentre) {}

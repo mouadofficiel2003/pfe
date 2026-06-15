@@ -24,7 +24,7 @@ function dtoToForm(c: CandidatDto): CandidatUpdatePayload {
     specialite: c.specialite,
     numeroInscription: c.numeroInscription,
     nomConcours: c.nomConcours,
-    concoursId: c.concoursId,
+    numeroConcours: c.numeroConcours,
     idCentre: c.idCentre,
     idEtablissement: c.idEtablissement,
     idSalle: c.idSalle,
@@ -127,9 +127,11 @@ export default function CandidatsPage() {
     setSaving(true);
     setActionError(null);
     try {
-      const updated = await updateCandidat(editing.id, editForm);
+      const updated = await updateCandidat(editing.numeroInscription, editForm);
       setCandidats((prev) =>
-        prev ? prev.map((x) => (x.id === updated.id ? updated : x)) : [updated],
+        prev
+          ? prev.map((x) => (x.numeroInscription === updated.numeroInscription ? updated : x))
+          : [updated],
       );
       closeEdit();
     } catch (err) {
@@ -156,8 +158,8 @@ export default function CandidatsPage() {
     if (!ok) return;
     setActionError(null);
     try {
-      await deleteCandidat(c.id);
-      setCandidats((prev) => (prev ? prev.filter((x) => x.id !== c.id) : prev));
+      await deleteCandidat(c.numeroInscription);
+      setCandidats((prev) => (prev ? prev.filter((x) => x.numeroInscription !== c.numeroInscription) : prev));
     } catch (err) {
       setActionError(err instanceof Error ? err.message : "Erreur lors de la suppression.");
     }
@@ -224,6 +226,9 @@ export default function CandidatsPage() {
               </Link>
               <Link style={navLink} to="/lieux">
                 Lieux
+              </Link>
+              <Link style={navLink} to="/repartition">
+                Répartition
               </Link>
             </nav>
           </div>
@@ -300,13 +305,14 @@ export default function CandidatsPage() {
                     <th style={th}>Email</th>
                     <th style={th}>Spécialité</th>
                     <th style={th}>N° inscr.</th>
+                    <th style={th}>N° concours</th>
                     <th style={th}>Concours</th>
                     {!readOnly ? <th style={thActions}>Actions</th> : null}
                   </tr>
                 </thead>
                 <tbody>
                   {candidats.map((c) => (
-                    <tr key={c.id}>
+                    <tr key={c.numeroInscription}>
                       <td style={td}>{c.nom}</td>
                       <td style={td}>{c.prenom}</td>
                       <td style={td}>{c.cin}</td>
@@ -316,6 +322,7 @@ export default function CandidatsPage() {
                       <td style={tdEmail}>{c.email}</td>
                       <td style={td}>{c.specialite}</td>
                       <td style={td}>{c.numeroInscription}</td>
+                      <td style={td}>{c.numeroConcours ?? "—"}</td>
                       <td style={td}>{c.nomConcours}</td>
                       {!readOnly ? (
                         <td style={tdActions}>
@@ -443,13 +450,13 @@ export default function CandidatsPage() {
                   Concours
                   <select
                     style={input}
-                    value={editForm.concoursId ?? ""}
+                    value={editForm.numeroConcours ?? ""}
                     onChange={(e) => {
-                      const id = e.target.value === "" ? null : Number(e.target.value);
-                      const co = concoursList.find((x) => x.id === id);
+                      const numero = e.target.value === "" ? null : e.target.value;
+                      const co = concoursList.find((x) => x.numeroConcours === numero);
                       setEditForm({
                         ...editForm,
-                        concoursId: id,
+                        numeroConcours: numero,
                         nomConcours: co?.nomConcours ?? editForm.nomConcours,
                       });
                     }}
@@ -459,7 +466,7 @@ export default function CandidatsPage() {
                       Choisir un concours…
                     </option>
                     {concoursList.map((co) => (
-                      <option key={co.id} value={co.id}>
+                      <option key={co.numeroConcours} value={co.numeroConcours}>
                         {co.nomConcours}
                         {co.numeroConcours ? ` (${co.numeroConcours})` : ""}
                       </option>

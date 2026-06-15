@@ -1,4 +1,4 @@
 package com.pfe.candidats.service;
 
-/** Concours canonique (id service concours + libellé officiel). */
-public record ResolvedConcours(Long concoursId, String nomConcours) {}
+/** Concours canonique (numéro service concours + libellé officiel). */
+public record ResolvedConcours(String numeroConcours, String nomConcours) {}
