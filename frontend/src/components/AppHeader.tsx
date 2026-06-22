@@ -10,6 +10,7 @@ const BASE_NAV: NavItem[] = [
   { to: "/concours", label: "Concours" },
   { to: "/lieux", label: "Lieux" },
   { to: "/repartition", label: "Répartition" },
+  { to: "/convocations", label: "Convocations" },
 ];
 
 export default function AppHeader() {

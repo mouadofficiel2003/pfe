@@ -20,6 +20,7 @@ export default defineConfig(({ mode }) => {
         "/api/etablissements": gatewayProxy,
         "/api/salles": gatewayProxy,
         "/api/repartition": gatewayProxy,
+        "/api/convocations": gatewayProxy,
       },
     },
   };

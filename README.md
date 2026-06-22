@@ -1,11 +1,12 @@
 # PFE — Plateforme de gestion de concours
 
 Application full-stack (microservices) pour la gestion de **concours**, **candidats**,
-**lieux** (centres, établissements, salles) et de la **répartition automatique** des
-candidats dans les salles, avec authentification JWT.
+**lieux** (centres, établissements, salles), de la **répartition automatique** des
+candidats dans les salles et de l'envoi des **convocations** par e-mail, avec
+authentification JWT.
 
 - **Frontend** : React 19 + TypeScript (Vite), SPA sur le port `5173`.
-- **Backend** : une **API Gateway** (Spring Cloud Gateway) devant **5 microservices**
+- **Backend** : une **API Gateway** (Spring Cloud Gateway) devant **6 microservices**
   Spring Boot 3.4.4 (Java 17), modules Maven sous un POM parent (`backend/pom.xml`).
 - **Base de données** : PostgreSQL, **une base par service** (database-per-service).
 - **Auth** : JWT HS256 sans état, secret partagé validé par chaque service ressource.
@@ -17,7 +18,7 @@ candidats dans les salles, avec authentification JWT.
 
 | Dossier / fichier | Description |
 |-------------------|-------------|
-| `backend/` | API Gateway + microservices Spring Boot (auth, candidat, concours, lieux, repartition) |
+| `backend/` | API Gateway + microservices Spring Boot (auth, candidat, concours, lieux, repartition, convocation) |
 | `frontend/` | Interface React + TypeScript (Vite) |
 | `database/` | Documentation des migrations Flyway (scripts dans chaque service) |
 | `scripts/` | Scripts utilitaires (seed de démo, génération de diagrammes PlantUML) |
@@ -48,6 +49,7 @@ Vérifier l'environnement :
 | concours-service | 8083 | `data_concours` | Concours + affectation des centres |
 | lieux-service | 8084 | `data_lieux` | Centres, établissements, salles |
 | repartition-service | 8085 | `data_repartition` | Répartition automatique (orchestration + historique) |
+| convocation-service | 8086 | `data_convocations` | Convocations PDF + envoi e-mail (Gmail) + historique des envois |
 
 ### Routage API Gateway
 
@@ -61,15 +63,16 @@ L'en-tête `Authorization: Bearer <jwt>` est transmis tel quel ; chaque service 
 | `/api/concours/**` | concours-service (8083) |
 | `/api/centres/**`, `/api/etablissements/**`, `/api/salles/**` | lieux-service (8084) |
 | `/api/repartition/**` | repartition-service (8085) |
+| `/api/convocations/**` | convocation-service (8086) |
 
-Les appels **inter-services** (validation croisée, répartition) passent directement
-entre services (`RestClient` sur les ports 8081–8085), pas par la gateway.
+Les appels **inter-services** (validation croisée, répartition, assemblage des convocations)
+passent directement entre services (`RestClient` sur les ports 8081–8086), pas par la gateway.
 
 ## Démarrage
 
 ### 1. Base de données
 
-Créer les 5 bases PostgreSQL vides (identifiants par défaut en dev : `postgres` / `postgres`
+Créer les 6 bases PostgreSQL vides (identifiants par défaut en dev : `postgres` / `postgres`
 sur `localhost:5432`) :
 
 ```sql
@@ -78,6 +81,7 @@ CREATE DATABASE data_candidats;
 CREATE DATABASE data_concours;
 CREATE DATABASE data_lieux;
 CREATE DATABASE data_repartition;
+CREATE DATABASE data_convocations;
 ```
 
 Le schéma est géré par **Flyway** : chaque service applique ses migrations
@@ -91,8 +95,22 @@ cd backend
 .\run-backend.ps1
 ```
 
-Le script lance la gateway et les 5 services dans des fenêtres PowerShell séparées
+Le script lance la gateway et les 6 services dans des fenêtres PowerShell séparées
 (nécessite un JDK 17+ via `JAVA_HOME` ou `java` dans le `PATH`).
+
+**Envoi des convocations (Gmail)** : `convocation-service` envoie les convocations par
+SMTP Gmail. Pour activer l'envoi, définir ces variables **avant** de lancer `run-backend.ps1`
+(les fenêtres filles en héritent) ; sinon tous les services démarrent mais l'envoi renvoie un
+`503` explicite :
+
+```powershell
+$env:MAIL_USERNAME = "mon.adresse@gmail.com"
+$env:MAIL_PASSWORD = "xxxxxxxxxxxxxxxx"   # mot de passe d'application Gmail (16 caractères, pas le mot de passe du compte)
+.\run-backend.ps1
+```
+
+Un mot de passe d'application Gmail nécessite la **validation en 2 étapes** activée
+(Compte Google → Sécurité → Mots de passe des applications).
 
 **Configuration locale** : chaque module lit `application.properties`. Pour surcharger en local,
 copier `application-local.properties.example` → `application-local.properties` dans le
@@ -105,15 +123,18 @@ les défauts sans modifier le code :
 
 | Variable | Propriété | Défaut (dev) | Portée |
 |----------|-----------|--------------|--------|
-| `JWT_SECRET` | `auth.jwt.secret` | `pfe-dev-jwt-secret-key-change-me-min-32b!!` | **identique** dans les 5 services ressource |
+| `JWT_SECRET` | `auth.jwt.secret` | `pfe-dev-jwt-secret-key-change-me-min-32b!!` | **identique** dans les 6 services ressource |
 | `DB_URL` | `spring.datasource.url` | `jdbc:postgresql://localhost:5432/<base du service>` | par service |
 | `DB_USERNAME` | `spring.datasource.username` | `postgres` | par service |
 | `DB_PASSWORD` | `spring.datasource.password` | `postgres` | par service |
-| `AUTH_SERVICE_URI`, `CANDIDAT_SERVICE_URI`, `CONCOURS_SERVICE_URI`, `LIEUX_SERVICE_URI`, `REPARTITION_SERVICE_URI` | routes de l'API Gateway | ports `8081`–`8085` | api-gateway |
+| `AUTH_SERVICE_URI`, `CANDIDAT_SERVICE_URI`, `CONCOURS_SERVICE_URI`, `LIEUX_SERVICE_URI`, `REPARTITION_SERVICE_URI`, `CONVOCATION_SERVICE_URI` | routes de l'API Gateway | ports `8081`–`8086` | api-gateway |
+| `MAIL_USERNAME` | `spring.mail.username` | _(vide)_ | convocation-service |
+| `MAIL_PASSWORD` | `spring.mail.password` | _(vide)_ | convocation-service |
+| `MAIL_FROM` | `convocation.mail.from` | = `MAIL_USERNAME` | convocation-service |
 
-Le **secret JWT** (`auth.jwt.secret` / `JWT_SECRET`) doit être **identique dans les 5 services
-ressource** (auth, candidat, concours, lieux, repartition) pour que la validation inter-services
-fonctionne. Le secret HS256 doit faire **au moins 32 octets UTF-8**.
+Le **secret JWT** (`auth.jwt.secret` / `JWT_SECRET`) doit être **identique dans les 6 services
+ressource** (auth, candidat, concours, lieux, repartition, convocation) pour que la validation
+inter-services fonctionne. Le secret HS256 doit faire **au moins 32 octets UTF-8**.
 
 > Les valeurs par défaut (`postgres` / `postgres`, secret de dev, comptes seedés) ne sont **que
 > pour le développement local** : en production, fournir un secret JWT fort et des identifiants
@@ -129,7 +150,7 @@ npm run dev
 ```
 
 Le proxy Vite redirige `/auth`, `/api/candidats`, `/api/concours`, `/api/centres`,
-`/api/etablissements`, `/api/salles` et `/api/repartition` vers la gateway
+`/api/etablissements`, `/api/salles`, `/api/repartition` et `/api/convocations` vers la gateway
 (`VITE_GATEWAY_ORIGIN`, par défaut `http://localhost:8080`).
 
 L'application est disponible sur http://localhost:5173.
@@ -153,6 +174,7 @@ sur leurs ports (8081, 8083, 8084), pas via la gateway.
 3. Établissements et salles (lieux), chaque salle liée à un `numero_concours`
 4. Candidats (import Excel ou CRUD)
 5. Répartition automatique (`POST /api/repartition/run`, rôle gestionnaire)
+6. Convocations : aperçu et envoi par e-mail (`POST /api/convocations/envoyer`, rôle gestionnaire)
 
 ## Comptes par défaut
 
@@ -163,7 +185,8 @@ Créés par la migration Flyway de l'auth-service (**à changer en production**)
 | `admin` | `Admin123!` | ADMINISTRATEUR |
 | `gestionnaire` | `Gest123!` | GESTIONNAIRE |
 
-- **ADMINISTRATEUR** : lecture seule sur les ressources métier.
+- **ADMINISTRATEUR** : lecture seule sur les ressources métier, mais **seul** rôle
+  habilité à gérer les comptes gestionnaires (`/auth/gestionnaires`, page `/gestionnaires`).
 - **GESTIONNAIRE** : lecture + écriture + déclenchement de la répartition.
 
 ## Pages du frontend
@@ -175,6 +198,8 @@ Créés par la migration Flyway de l'auth-service (**à changer en production**)
 | `/concours` | Gestion des concours | Authentifié |
 | `/lieux` | Centres / établissements / salles | Authentifié |
 | `/repartition` | Répartition automatique | Authentifié |
+| `/convocations` | Convocations PDF + envoi e-mail | Authentifié (envoi : GESTIONNAIRE) |
+| `/gestionnaires` | Gestion des comptes gestionnaires | Authentifié (ADMINISTRATEUR) |
 
 ## Identifiants partagés entre services
 
@@ -200,7 +225,8 @@ npm run build
 ## Stack technique
 
 - **Backend** : Spring Boot 3.4.4, Spring Cloud Gateway (Spring Cloud 2024.0.1),
-  Spring Security, Spring Data JPA, Flyway, Apache POI (import Excel), jjwt 0.12.6,
+  Spring Security, Spring Data JPA, Flyway, Apache POI (import Excel), OpenPDF (génération
+  des convocations PDF), Spring Mail / SMTP Gmail (envoi des convocations), jjwt 0.12.6,
   Java 17, Maven (multi-module).
 - **Frontend** : React 19, TypeScript, Vite 6, axios, react-router-dom 6.
 - **Base de données** : PostgreSQL (schémas versionnés par Flyway).

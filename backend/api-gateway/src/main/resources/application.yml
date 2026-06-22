@@ -46,6 +46,10 @@ spring:
           uri: ${REPARTITION_SERVICE_URI:http://localhost:8085}
           predicates:
             - Path=/api/repartition/**
+        - id: convocation-service
+          uri: ${CONVOCATION_SERVICE_URI:http://localhost:8086}
+          predicates:
+            - Path=/api/convocations/**
 
 server:
   port: 8080

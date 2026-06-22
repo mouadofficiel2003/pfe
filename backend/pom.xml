@@ -24,6 +24,7 @@
         <module>concours-service</module>
         <module>lieux-service</module>
         <module>repartition-service</module>
+        <module>convocation-service</module>
     </modules>
 
     <properties>

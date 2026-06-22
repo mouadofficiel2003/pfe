@@ -7,10 +7,11 @@
 ## Overview
 
 This is a **full-stack microservices application** for managing exams/competitions
-("concours"), candidates, exam locations, and automatic seat allocation. It is built as:
+("concours"), candidates, exam locations, automatic seat allocation, and e-mailing of
+candidate **convocations** (exam summons). It is built as:
 
 - **Frontend**: React 19 + TypeScript (Vite), single-page app on port `5173`.
-- **Backend**: 5 independent Spring Boot 3.4.4 services (Java 17) behind a
+- **Backend**: 6 independent Spring Boot 3.4.4 services (Java 17) behind a
   **Spring Cloud Gateway** edge service, all as Maven modules under one parent POM
   (`backend/pom.xml`).
 - **Database**: PostgreSQL, with **one separate database per service**
@@ -23,7 +24,7 @@ handles CORS. There is **no service discovery** (no Eureka / Feign) — inter-se
 calls use hardcoded base URLs via Spring's `RestClient`, bypassing the gateway.
 In dev, the Vite proxy forwards the browser's relative paths to the gateway.
 
-## The API gateway + 5 microservices
+## The API gateway + 6 microservices
 
 | Service               | Port  | Database           | Responsibility                                      |
 | --------------------- | ----- | ------------------ | --------------------------------------------------- |
@@ -33,6 +34,7 @@ In dev, the Vite proxy forwards the browser's relative paths to the gateway.
 | `concours-service`    | 8083  | `data_concours`    | Competitions + centre assignments                   |
 | `lieux-service`       | 8084  | `data_lieux`       | Locations: centres, établissements, salles          |
 | `repartition-service` | 8085  | `data_repartition` | Automatic seat allocation (orchestration + history) |
+| `convocation-service` | 8086  | `data_convocations`| Convocation PDFs + bulk e-mail (Gmail) + send history |
 
 The gateway (`backend/api-gateway`, package `com.pfe.gateway`) is a reactive
 Spring Cloud Gateway app. It owns **no database** and **no JWT validation** — it is
@@ -45,11 +47,12 @@ a stateless reverse proxy. Routes are declared in `application.yml`:
 | `/api/concours/**`                                       | concours-service:8083 |
 | `/api/centres/**`, `/api/etablissements/**`, `/api/salles/**` | lieux-service:8084 |
 | `/api/repartition/**`                                   | repartition-service:8085 |
+| `/api/convocations/**`                                  | convocation-service:8086 |
 
 Downstream service URIs are overridable via environment variables (`AUTH_SERVICE_URI`,
 `CANDIDAT_SERVICE_URI`, `CONCOURS_SERVICE_URI`, `LIEUX_SERVICE_URI`,
-`REPARTITION_SERVICE_URI`). The `Authorization: Bearer <jwt>` header is forwarded
-unchanged, so each downstream service validates the JWT itself.
+`REPARTITION_SERVICE_URI`, `CONVOCATION_SERVICE_URI`). The `Authorization: Bearer <jwt>`
+header is forwarded unchanged, so each downstream service validates the JWT itself.
 
 The gateway also applies a `DedupeResponseHeader` filter on CORS headers, because
 downstream services also emit CORS headers and duplicate values would break browsers.
@@ -84,6 +87,7 @@ and never touches another service's tables:
 | `data_concours`     | concours-service    | `concours` (PK: `numero_concours`), `concours_affectation_centre`           |
 | `data_lieux`        | lieux-service       | `centre` → `etablissement` → `salle` (PKs: `id_centre`, `id_etablissement`, `id_salle`) |
 | `data_repartition`  | repartition-service | `repartition_run`, `repartition_affectation`, `repartition_alerte`          |
+| `data_convocations` | convocation-service | `convocation_envoi` (one row per e-mail send attempt: `ENVOYE` / `ECHEC`)   |
 
 ### Flyway migrations
 
@@ -98,6 +102,7 @@ Schema is managed by **Flyway**, not Hibernate. Every service sets
 | concours-service    | `V1__init_concours.sql`, `V2__concours_centre_lien.sql`, `V3__concours_affectation_id_centre.sql` |
 | lieux-service       | `V1__init_lieux.sql` |
 | repartition-service | `V1__init_repartition.sql`, `V2__repartition_run_message.sql` |
+| convocation-service | `V1__init_convocation.sql` |
 
 Key schema notes:
 
@@ -138,10 +143,10 @@ JWT as a `Bearer` token to every request via a request interceptor.
    and issues a signed JWT (subject = username, custom `role` claim).
 2. Frontend stores the token (localStorage) and sends it as `Bearer` on every request.
 3. **Each resource service validates the JWT itself** using the same shared secret
-   (`auth.jwt.secret`, identical in all five resource services). There is no
+   (`auth.jwt.secret`, identical in all six resource services). There is no
    call back to auth-service to validate tokens. The secret is externalized as
    `${JWT_SECRET:…}`: a dev default is baked in, but production overrides it by setting
-   the `JWT_SECRET` environment variable (the same value must be set on all five resource
+   the `JWT_SECRET` environment variable (the same value must be set on all six resource
    services; HS256 requires at least 32 UTF-8 bytes).
 4. `GET /auth/me` restores the session on page reload.
 
@@ -151,8 +156,12 @@ Authorization is role-based per HTTP method:
 
 | Role             | Read (`GET`) | Write (`POST`/`PUT`/`PATCH`/`DELETE`) | Repartition run |
 | ---------------- | ------------ | --------------------------------------- | --------------- |
-| `ADMINISTRATEUR` | yes          | no                                      | no              |
+| `ADMINISTRATEUR` | yes          | no (business resources)                 | no              |
 | `GESTIONNAIRE`   | yes          | yes                                     | yes             |
+
+`ADMINISTRATEUR` is read-only on the **business** resources (candidat, concours, lieux,
+repartition) but is the **only** role allowed to manage gestionnaire accounts via
+`/auth/gestionnaires/**` on auth-service (create/update/delete gestionnaires).
 
 All services are stateless (`SessionCreationPolicy.STATELESS`). CORS allows
 `http://localhost:5173` on both the gateway and each service (gateway dedupes headers).
@@ -173,6 +182,7 @@ East-west traffic goes **directly service-to-service** (not through the gateway)
 | concours-service    | `lieux.service.base-url`         | 8084        |
 | lieux-service       | `concours.service.base-url`      | 8083        |
 | repartition-service | `concours/lieux/candidat.service.base-url` | 8083/8084/8082 |
+| convocation-service | `candidat/concours/lieux.service.base-url` | 8082/8083/8084 |
 
 #### Internal call graph
 
@@ -197,6 +207,8 @@ East-west traffic goes **directly service-to-service** (not through the gateway)
 - When a salle is linked to a competition: `GET /api/concours/{numeroConcours}` to validate it exists.
 - When listing centres: `GET /api/concours/by-centre/{idCentre}` to enrich with planned competitions.
 - This endpoint reads **only the concours database** (no call back to lieux) — see deadlock note below.
+- When a centre is renamed: `PATCH /api/concours/affectations/centre/{idCentre}` to propagate the new
+  label, because concours-service keeps a denormalized `nom_centre` copy on its affectations.
 
 **repartition-service → concours / lieux / candidat** (orchestrator)
 
@@ -210,6 +222,25 @@ On `POST /api/repartition/run` (gestionnaire only):
 6. Persists run summary + per-candidate affectations + alerts in `data_repartition`.
 
 Query history later via `GET /api/repartition/runs` and `GET /api/repartition/runs/{id}`.
+
+**convocation-service → candidat / concours / lieux** (read-only aggregator)
+
+This service owns no business data of its own (only the `convocation_envoi` send log). It
+**assembles** each convocation on demand from the three upstream services (`ConvocationAssembler`),
+forwarding the caller's JWT:
+
+1. `GET /api/candidats` — all candidates, with their seat assignment and e-mail.
+2. `GET /api/concours` — competitions, for `nom_concours` and `date_heure_examen`.
+3. Per competition referenced by a seated candidate: `GET /api/salles?numeroConcours=` — to resolve
+   the room/établissement/centre **names** from the candidate's `id_salle`.
+
+Only candidates with a **complete** assignment (centre + établissement + salle + place, set by the
+repartition) yield a convocation. On `POST /api/convocations/envoyer` (gestionnaire only), each
+convocation is rendered to **PDF** (OpenPDF) and e-mailed (Spring Mail over Gmail SMTP) as an
+attachment; every attempt is persisted as a `convocation_envoi` row (`ENVOYE` / `ECHEC`). Sending is
+**per-candidate independent** — one failure (missing/invalid e-mail, SMTP error) never aborts the
+batch. Sending requires `MAIL_USERNAME` / `MAIL_PASSWORD` (Gmail app password); without them the
+endpoint returns `503`.
 
 #### Repartition algorithm
 
@@ -279,10 +310,15 @@ Downstream failures are translated consistently:
 
 ### auth-service (`/auth`)
 
-| Method | Path        | Auth     | Description              |
-| ------ | ----------- | -------- | ------------------------ |
-| POST   | `/login`    | public   | Issue JWT                |
-| GET    | `/me`       | JWT      | Current user info        |
+| Method | Path                      | Auth            | Description                       |
+| ------ | ------------------------- | --------------- | --------------------------------- |
+| POST   | `/login`                  | public          | Issue JWT                         |
+| GET    | `/me`                     | JWT             | Current user info                 |
+| GET    | `/gestionnaires`          | ADMINISTRATEUR  | List gestionnaire accounts        |
+| GET    | `/gestionnaires/{id}`     | ADMINISTRATEUR  | Get one gestionnaire account      |
+| POST   | `/gestionnaires`          | ADMINISTRATEUR  | Create gestionnaire account       |
+| PUT    | `/gestionnaires/{id}`     | ADMINISTRATEUR  | Update gestionnaire account       |
+| DELETE | `/gestionnaires/{id}`     | ADMINISTRATEUR  | Delete gestionnaire account       |
 
 ### candidat-service (`/api/candidats`)
 
@@ -293,6 +329,7 @@ Downstream failures are translated consistently:
 | PUT    | `/{numeroInscription}`        | GESTIONNAIRE  | Update candidate               |
 | PATCH  | `/affectations`               | GESTIONNAIRE  | Batch seat assignment (repartition) |
 | DELETE | `/{numeroInscription}`        | GESTIONNAIRE  | Delete candidate               |
+| DELETE | `/`                           | GESTIONNAIRE  | Clear the whole candidate list (reset) |
 | POST   | `/import` (multipart)         | GESTIONNAIRE  | Excel import                   |
 
 ### concours-service (`/api/concours`)
@@ -304,6 +341,8 @@ Downstream failures are translated consistently:
 | GET    | `/{numeroConcours}`           | read roles    | Get one competition            |
 | POST   | `/`                           | GESTIONNAIRE  | Create competition             |
 | PUT    | `/{numeroConcours}`           | GESTIONNAIRE  | Update competition             |
+| POST   | `/{numeroConcours}/affectations` | GESTIONNAIRE | Assign a centre to a competition |
+| PATCH  | `/affectations/centre/{idCentre}` | GESTIONNAIRE | Propagate a centre rename (label refresh) |
 | DELETE | `/{numeroConcours}`           | GESTIONNAIRE  | Delete competition             |
 
 ### lieux-service
@@ -330,41 +369,56 @@ Downstream failures are translated consistently:
 | Method | Path          | Role          | Description                         |
 | ------ | ------------- | ------------- | ----------------------------------- |
 | POST   | `/run`        | GESTIONNAIRE  | Trigger automatic allocation        |
+| POST   | `/reset`      | GESTIONNAIRE  | Clear every candidate's affectation (reset) |
 | GET    | `/runs`       | read roles    | Run history (summary)               |
 | GET    | `/runs/{id}`  | read roles    | Full run (affectations + alertes)   |
+| DELETE | `/runs/{id}`  | GESTIONNAIRE  | Delete a historized run             |
+
+### convocation-service (`/api/convocations`)
+
+| Method | Path                          | Role          | Description                                   |
+| ------ | ----------------------------- | ------------- | --------------------------------------------- |
+| GET    | `/`                           | read roles    | Preview of all ready convocations (seated candidates) |
+| GET    | `/{numeroInscription}/pdf`    | read roles    | One candidate's convocation as a PDF (inline) |
+| POST   | `/envoyer`                    | GESTIONNAIRE  | Send all convocations by e-mail (bulk)        |
+| GET    | `/envois`                     | read roles    | Send history (per e-mail attempt)             |
 
 ## Architecture diagram
 
 ```
-                          ┌─────────────────────────────┐
-                          │   Browser (React + Vite)     │
-                          │      localhost:5173          │
-                          └──────────────┬──────────────┘
-                                         │ JWT in Authorization header
-                          ┌──────────────▼──────────────┐
-                          │   Vite dev proxy (→ :8080)    │
-                          └──────────────┬──────────────┘
-                                         │
-                          ┌──────────────▼──────────────┐
-                          │   API Gateway (:8080)         │
-                          │  Spring Cloud Gateway         │
-                          │ (path-prefix routing + CORS)  │
-                          └─┬───────┬────────┬────────┬───────┬─────┘
-       /auth │ /api/candidats │ /api/concours │ /api/centres,salles,etab │ /api/repartition
-             ▼              ▼              ▼               ▼                  ▼
-   ┌────────────┐ ┌──────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────────┐
-   │ auth-svc   │ │   candidat   │ │  concours  │ │   lieux    │ │   repartition    │
-   │   :8081    │ │    :8082     │ │   :8083    │ │   :8084    │ │      :8085        │
-   └─────┬──────┘ └──┬───────┬───┘ └─────┬──────┘ └─────┬──────┘ └────────┬─────────┘
-         │           │       │          │  ▲           │  ▲              │
-         │           │       │          └──┼───────────┘  │   repartition orchestrates
-         │           │       └─────────────┼──────────────┘   concours + lieux + candidat
-         │           │   synchronous REST (RestClient), JWT forwarded
-         ▼           ▼             ▼              ▼                       ▼
-   ┌──────────┐ ┌──────────────┐ ┌────────────┐ ┌────────────┐ ┌──────────────────┐
-   │ PFE_Data │ │data_candidats│ │data_concours│ │ data_lieux │ │ data_repartition │
-   └──────────┘ └──────────────┘ └────────────┘ └────────────┘ └──────────────────┘
+                 ┌─────────────────────────────┐
+                 │   Browser (React + Vite)     │
+                 │      localhost:5173          │
+                 └──────────────┬──────────────┘
+                                │ JWT in Authorization header
+                 ┌──────────────▼──────────────┐
+                 │   Vite dev proxy (→ :8080)    │
+                 └──────────────┬──────────────┘
+                                │
+                 ┌──────────────▼──────────────┐
+                 │   API Gateway (:8080)         │
+                 │  Spring Cloud Gateway         │
+                 │ (path-prefix routing + CORS)  │
+                 └─┬─────┬─────┬─────┬─────┬─────┬─┘
+   /auth │ /api/candidats │ /api/concours │ /api/centres,salles,etab │ /api/repartition │ /api/convocations
+         ▼        ▼        ▼        ▼          ▼            ▼
+   ┌──────────┐ ┌────────┐ ┌────────┐ ┌──────┐ ┌────────────┐ ┌────────────┐
+   │ auth-svc │ │candidat│ │concours│ │lieux │ │ repartition │ │ convocation │
+   │  :8081   │ │ :8082  │ │ :8083  │ │:8084 │ │   :8085     │ │   :8086     │
+   └────┬─────┘ └──┬─────┘ └──┬─────┘ └──┬───┘ └──────┬──────┘ └──────┬──────┘
+        │          │  ▲       │  ▲       │ ▲          │               │
+        │          │  └───────┘  └───────┘ │   repartition orchestrates│ convocation reads
+        │          │      synchronous REST │   concours+lieux+candidat │ candidat+concours+lieux,
+        │          │      (RestClient),    │   then writes affectations│ renders PDF + sends e-mail
+        │          │      JWT forwarded ───┘                           │ (Gmail SMTP)
+        ▼          ▼          ▼          ▼            ▼                 ▼
+   ┌──────────┐ ┌────────┐ ┌────────┐ ┌──────┐ ┌────────────┐ ┌────────────────┐
+   │ PFE_Data │ │ data_  │ │ data_  │ │data_ │ │   data_    │ │     data_       │
+   │          │ │candidats│ │concours│ │lieux │ │ repartition │ │  convocations   │
+   └──────────┘ └────────┘ └────────┘ └──────┘ └────────────┘ └────────────────┘
                             PostgreSQL  (Flyway-managed schemas)
+
+   convocation-service also reaches out over SMTP to Gmail to deliver the PDFs.
 ```
 
 ## Recommended data setup order
@@ -376,12 +430,15 @@ When seeding data manually (or via `scripts/seed-demo-data.ps1`):
 3. **Établissements + salles** (lieux-service) — create rooms linked to a `numero_concours`.
 4. **Candidats** (candidat-service) — import via Excel or CRUD.
 5. **Répartition** (repartition-service) — trigger `POST /api/repartition/run`.
+6. **Convocations** (convocation-service) — preview at `/convocations`, then bulk-send with
+   `POST /api/convocations/envoyer` (requires Gmail `MAIL_USERNAME` / `MAIL_PASSWORD`).
 
 ## Tech stack
 
 - **Backend**: Spring Boot 3.4.4, Spring Cloud Gateway (Spring Cloud 2024.0.1),
   Spring Security, Spring Data JPA, Flyway, Apache POI (Excel import in
-  candidat-service), jjwt 0.12.6, Java 17, Maven (multi-module).
+  candidat-service), OpenPDF (convocation PDFs) + Spring Mail / Gmail SMTP (in
+  convocation-service), jjwt 0.12.6, Java 17, Maven (multi-module).
 - **Frontend**: React 19, TypeScript, Vite 6, axios, react-router-dom 6.
 - **Database**: PostgreSQL 14+ (candidat trigger uses `EXECUTE FUNCTION`).
 
@@ -404,6 +461,11 @@ When seeding data manually (or via `scripts/seed-demo-data.ps1`):
   candidat-service, then persists its own history. A failure after step 5 can leave
   candidats updated without a complete run record (failures are traced as `ECHEC` runs
   when possible).
+- **Best-effort convocations**: the bulk send is synchronous and per-candidate independent —
+  each e-mail is attempted and logged (`ENVOYE` / `ECHEC`) without rolling back the others, so a
+  few bad addresses never block the rest. Convocations are **derived** (not stored): they are
+  recomputed from candidate assignments on every request, so the service holds only the send log.
+  E-mail delivery depends on an external provider (Gmail SMTP) and a configured app password.
 
 ## Repository layout
 

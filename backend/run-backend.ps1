@@ -1,5 +1,13 @@
-# Lance api-gateway (8080), auth-service (8081), candidat-service (8082), concours-service (8083), lieux-service (8084) et repartition-service (8085) dans des fenetres PowerShell separees.
+# Lance api-gateway (8080), auth-service (8081), candidat-service (8082), concours-service (8083),
+# lieux-service (8084), repartition-service (8085) et convocation-service (8086) dans des fenetres
+# PowerShell separees.
 # Necessite un JDK 17+ : soit JAVA_HOME pointe vers le JDK, soit java est dans le PATH.
+#
+# convocation-service envoie les convocations par e-mail (SMTP Gmail). Pour activer l'envoi, definir
+# AVANT de lancer ce script (les fenetres filles heritent de l'environnement) :
+#   $env:MAIL_USERNAME = "mon.adresse@gmail.com"
+#   $env:MAIL_PASSWORD = "mot de passe d'application Gmail (16 caracteres)"
+# Sans ces variables, tous les services demarrent quand meme ; seul l'envoi renvoie un 503 explicite.
 $ErrorActionPreference = "Stop"
 Set-Location $PSScriptRoot
 
@@ -43,6 +51,7 @@ if (Test-Path $mvnwCmd) {
     $runConcours = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl concours-service spring-boot:run"
     $runLieux = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl lieux-service spring-boot:run"
     $runRepartition = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl repartition-service spring-boot:run"
+    $runConvocation = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; .\mvnw.cmd -pl convocation-service spring-boot:run"
 } else {
     $runGateway = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl api-gateway spring-boot:run"
     $runAuth = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl auth-service spring-boot:run"
@@ -50,6 +59,7 @@ if (Test-Path $mvnwCmd) {
     $runConcours = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl concours-service spring-boot:run"
     $runLieux = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl lieux-service spring-boot:run"
     $runRepartition = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl repartition-service spring-boot:run"
+    $runConvocation = "`$env:JAVA_HOME='$javaHomeEsc'; Set-Location -LiteralPath '$rootEsc'; mvn -pl convocation-service spring-boot:run"
 }
 
 Write-Host "Demarrage api-gateway sur http://localhost:8080 (nouvelle fenetre)..." -ForegroundColor Cyan
@@ -100,4 +110,17 @@ Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
     $runRepartition
 )
 
-Write-Host "La gateway et les cinq services demarrent. Fermez chaque fenetre pour arreter le service correspondant." -ForegroundColor Green
+if (-not $env:MAIL_USERNAME -or -not $env:MAIL_PASSWORD) {
+    Write-Host "Astuce : MAIL_USERNAME / MAIL_PASSWORD non definis -> l'envoi de convocations renverra un 503." -ForegroundColor Yellow
+    Write-Host "         Definissez-les avant de relancer ce script pour activer l'envoi e-mail." -ForegroundColor Yellow
+}
+
+Write-Host "Demarrage convocation-service sur http://localhost:8086 (nouvelle fenetre)..." -ForegroundColor Cyan
+Start-Process powershell.exe -WorkingDirectory $PSScriptRoot -ArgumentList @(
+    "-NoExit",
+    "-NoLogo",
+    "-Command",
+    $runConvocation
+)
+
+Write-Host "La gateway et les six services demarrent. Fermez chaque fenetre pour arreter le service correspondant." -ForegroundColor Green

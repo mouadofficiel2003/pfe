@@ -1,0 +1,17 @@
+# Copier en application-local.properties (non versionné) pour surcharges locales.
+#
+# spring.datasource.url=jdbc:postgresql://localhost:5432/data_convocations
+# spring.datasource.username=postgres
+# spring.datasource.password=postgres
+#
+# spring.flyway.locations=classpath:db/migration
+#
+# candidat.service.base-url=http://localhost:8082
+# concours.service.base-url=http://localhost:8083
+# lieux.service.base-url=http://localhost:8084
+#
+# Identifiants Gmail (mot de passe d'application à 16 caractères, généré dans le
+# compte Google > Sécurité > Validation en deux étapes > Mots de passe des applications).
+# spring.mail.username=mon.adresse@gmail.com
+# spring.mail.password=abcd efgh ijkl mnop
+# convocation.mail.from=mon.adresse@gmail.com
